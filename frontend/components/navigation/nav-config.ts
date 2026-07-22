@@ -4,17 +4,13 @@ import {
   Bell,
   Boxes,
   Building2,
-  FileText,
-  Globe,
   Home,
+  LogOut,
   Menu,
   Package,
   ReceiptText,
   Settings2,
-  ShieldCheck,
   Sparkles,
-  Store,
-  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +21,19 @@ export type NavLinkItem = {
   icon: LucideIcon;
   external?: boolean;
 };
+
+export type DrawerLinkItem =
+  | {
+      href: string;
+      label: string;
+      icon: LucideIcon;
+      external?: boolean;
+    }
+  | {
+      action: "logout";
+      label: string;
+      icon: LucideIcon;
+    };
 
 export const primaryTabs: NavLinkItem[] = [
   { href: "/dashboard", label: "Главная", icon: Home },
@@ -40,18 +49,15 @@ export const quickActions: NavLinkItem[] = [
   { href: "/ai", label: "Распознать чек", icon: Sparkles },
 ];
 
-export const moreLinks: NavLinkItem[] = [
+export const moreLinks: DrawerLinkItem[] = [
+  { href: "/dashboard", label: "Главная", icon: Home },
+  { href: "/orders/new", label: "Новый заказ", icon: ReceiptText },
+  { href: "/products", label: "Каталог товаров", icon: Package },
+  { href: "/products/inventory", label: "Склад", icon: Boxes },
+  { href: "/orders", label: "Заказы", icon: ReceiptText },
+  { href: "/ai", label: "AI Распознавание", icon: Sparkles },
   { href: "/settings", label: "Настройки", icon: Settings2 },
-  { href: "/dashboard/company", label: "Компания", icon: Building2 },
-  { href: "/subscription", label: "Подписка", icon: Wallet },
-  { href: "/dashboard/company/users", label: "Сотрудники", icon: Users },
-  { href: "/dashboard/company/settings", label: "Профиль", icon: Store },
-  { href: "/billing", label: "Биллинг", icon: Wallet },
-  { href: "/reports", label: "Отчёты", icon: BarChart3 },
-  { href: "/system-settings", label: "Интеграции", icon: Globe },
-  { href: "/notifications", label: "Уведомления", icon: Bell },
-  { href: "http://localhost:8000/docs", label: "API", icon: FileText, external: true },
-  { href: "/audit", label: "Аудит", icon: ShieldCheck },
+  { action: "logout", label: "Выход", icon: LogOut },
 ];
 
 export const dashboardSections: Array<{ href: string; label: string; icon: LucideIcon }> = [

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Search, ChevronDown, Menu, UserCircle2 } from "lucide-react";
+import { Bell, ChevronDown, Menu, Search, UserCircle2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getNotifications } from "@/lib/platform";
 import { getCurrentSession } from "@/lib/session";
+import { apiClient } from "@/lib/api-client";
+import { clearStoredAuth } from "@/lib/auth";
 import { moreLinks, primaryTabs } from "@/components/navigation/nav-config";
 
 function initials(name: string | null | undefined, email: string | undefined): string {
@@ -28,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
   const pathname = usePathname();
   const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const sessionQuery = useQuery({
     queryKey: ["session-me"],
@@ -52,12 +55,16 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
         input?.focus();
       }
       if (event.key === "Escape") {
-        setMoreOpen(false);
+        setMenuOpen(false);
       }
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
   }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   const submitSearch = (): void => {
     const query = searchValue.trim();
@@ -77,20 +84,35 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
 
   const currentTab = primaryTabs.find((item) => item.href === pathname || pathname.startsWith(`${item.href}/`));
 
+  const handleLogout = async (): Promise<void> => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      await apiClient("/auth/logout", { method: "POST" });
+    } finally {
+      clearStoredAuth();
+      router.replace("/login");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_30%),linear-gradient(to_bottom,hsl(var(--background)),hsl(var(--muted)/0.16))]">
       <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col">
         <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-xl">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-            <Link href="/dashboard" className="flex items-center gap-3 rounded-2xl px-2 py-1 transition-colors hover:bg-muted">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-sm font-semibold text-primary-foreground shadow-soft">
-                KO
-              </div>
-              <div className="hidden flex-col leading-tight sm:flex">
-                <span className="text-sm font-semibold">Kara Orders</span>
-                <span className="text-xs text-muted-foreground">Премиум-панель управления</span>
-              </div>
-            </Link>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-11 rounded-full px-4"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Menu className="h-4 w-4" />
+              <span className="font-medium">Kara Orders</span>
+            </Button>
 
             <form
               className="hidden flex-1 items-center gap-2 md:flex"
@@ -144,17 +166,6 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
                 </Button>
                 <LogoutButton />
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-11 rounded-full px-4 md:hidden"
-                onClick={() => setMoreOpen(true)}
-                aria-label="Открыть дополнительное меню"
-              >
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Открыть дополнительное меню</span>
-              </Button>
             </div>
           </div>
         </header>
@@ -173,7 +184,7 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
                   <button
                     key={item.href}
                     type="button"
-                    onClick={() => setMoreOpen(true)}
+                    onClick={() => setMenuOpen(true)}
                     className={cn(
                       "flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium transition-colors",
                       active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
@@ -203,39 +214,73 @@ export function AppShell({ children }: { children: ReactNode }): ReactElement {
         </nav>
       </div>
 
-      {moreOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/40 p-4 md:hidden" onClick={() => setMoreOpen(false)}>
-          <Card className="mx-auto mt-auto max-w-md rounded-[2rem] p-5 shadow-soft" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Ещё</p>
-                <p className="text-xs text-muted-foreground">Вспомогательные разделы</p>
+      {menuOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/40 p-3 sm:p-4" onClick={() => setMenuOpen(false)}>
+          <Card
+            className="flex h-full w-full max-w-[420px] flex-col rounded-[2rem] p-4 shadow-soft sm:p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b pb-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">Kara Orders</p>
+                <p className="text-xs text-muted-foreground">Меню навигации</p>
               </div>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setMoreOpen(false)}>
-                Закрыть
+              <Button type="button" variant="ghost" size="sm" onClick={() => setMenuOpen(false)}>
+                <X className="h-4 w-4" />
+                <span className="sr-only">Закрыть меню</span>
               </Button>
             </div>
-            <div className="grid gap-2">
+
+            <div className="mt-4 flex-1 space-y-2 overflow-y-auto">
               {moreLinks.map((item) => {
                 const Icon = item.icon;
+                if ("action" in item && item.action === "logout") {
+                  return (
+                    <Button
+                      key={item.label}
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-2xl px-4 py-3"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      {isLoggingOut ? "Выход…" : item.label}
+                    </Button>
+                  );
+                }
+
+                const linkItem = item as Extract<Exclude<(typeof moreLinks)[number], { action: "logout" }>, { href: string }>;
+                const active = pathname === linkItem.href || pathname.startsWith(`${linkItem.href}/`);
                 const content = (
-                  <span className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors hover:bg-muted">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-colors",
+                      active ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", active ? "text-primary-foreground" : "text-muted-foreground")} />
                     {item.label}
                   </span>
                 );
-                return item.external ? (
-                  <a key={item.href} href={item.href} target="_blank" rel="noreferrer">
-                    {content}
-                  </a>
-                ) : (
-                  <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)}>
+
+                if (linkItem.external) {
+                  return (
+                    <a key={linkItem.href} href={linkItem.href} target="_blank" rel="noreferrer">
+                      {content}
+                    </a>
+                  );
+                }
+
+                return (
+                  <Link key={linkItem.href} href={linkItem.href} onClick={() => setMenuOpen(false)}>
                     {content}
                   </Link>
                 );
               })}
             </div>
-            <div className="mt-5 rounded-2xl border bg-muted/30 p-4">
+
+            <div className="mt-4 rounded-2xl border bg-muted/30 p-4">
               <div className="flex items-center gap-3">
                 <UserCircle2 className="h-5 w-5 text-muted-foreground" />
                 <div>
