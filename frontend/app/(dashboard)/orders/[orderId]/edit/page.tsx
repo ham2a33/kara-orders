@@ -85,29 +85,29 @@ export default function OrderEditPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Edit order</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Update order</h1>
+        <Badge>Редактирование</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Обновление заказа</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Edit customer details, quantities, discounts, and items for order {orderId}.
+          Изменяйте данные клиента, количество, скидки и позиции заказа {orderId}.
         </p>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Editable order</CardTitle>
-          <CardDescription>The backend recalculates all totals before saving.</CardDescription>
+          <CardTitle>Редактируемый заказ</CardTitle>
+          <CardDescription>Backend пересчитает все суммы перед сохранением.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="editCustomerName">Customer name</Label>
+            <Label htmlFor="editCustomerName">Имя клиента</Label>
             <Input id="editCustomerName" value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editCustomerPhone">Phone</Label>
+            <Label htmlFor="editCustomerPhone">Телефон</Label>
             <Input id="editCustomerPhone" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="editCustomerAddress">Address</Label>
+            <Label htmlFor="editCustomerAddress">Адрес</Label>
             <Input
               id="editCustomerAddress"
               value={customerAddress}
@@ -115,21 +115,21 @@ export default function OrderEditPage(): ReactElement {
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="editStatus">Status</Label>
+            <Label htmlFor="editStatus">Статус</Label>
             <select
               id="editStatus"
               className="flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={status}
               onChange={(event) => setStatus(event.target.value as typeof status)}
             >
-              <option value="draft">Draft</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="draft">Черновик</option>
+              <option value="confirmed">Подтверждён</option>
+              <option value="completed">Выполнен</option>
+              <option value="cancelled">Отменён</option>
             </select>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="editNotes">Notes</Label>
+            <Label htmlFor="editNotes">Комментарий</Label>
             <textarea
               id="editNotes"
               rows={4}
@@ -139,13 +139,13 @@ export default function OrderEditPage(): ReactElement {
             />
           </div>
           <div className="rounded-2xl border bg-muted/30 p-4 text-sm text-muted-foreground md:col-span-2">
-            Item editor and review grid is connected to the live order API below.
+            Редактор позиций и блок проверки подключены к живому API заказа ниже.
           </div>
           <div className="md:col-span-2 space-y-4">
             {items.map((item, index) => (
               <div key={index} className="grid gap-3 rounded-2xl border p-4 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-3">
-                  <Label>Product ID</Label>
+                  <Label>ID товара</Label>
                   <Input
                     value={item.product_id}
                     onChange={(event) =>
@@ -158,7 +158,7 @@ export default function OrderEditPage(): ReactElement {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Quantity</Label>
+                  <Label>Количество</Label>
                   <Input
                     value={item.quantity}
                     onChange={(event) =>
@@ -171,7 +171,7 @@ export default function OrderEditPage(): ReactElement {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Discount</Label>
+                  <Label>Скидка</Label>
                   <Input
                     value={item.discount_amount}
                     onChange={(event) =>
@@ -190,13 +190,13 @@ export default function OrderEditPage(): ReactElement {
                     onClick={() => setItems((current) => current.filter((_, currentIndex) => currentIndex !== index))}
                     disabled={items.length === 1}
                   >
-                    Remove line
+                    Удалить строку
                   </Button>
                 </div>
               </div>
             ))}
             <Button type="button" variant="outline" onClick={() => setItems((current) => [...current, { product_id: "", quantity: "1", discount_amount: "0" }])}>
-              Add line
+              Добавить строку
             </Button>
           </div>
           {mutation.isError ? (
@@ -206,7 +206,7 @@ export default function OrderEditPage(): ReactElement {
           ) : null}
           <div className="flex flex-wrap gap-3 md:col-span-2">
             <Button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending || !canSubmit}>
-              {mutation.isPending ? "Saving..." : "Save order"}
+              {mutation.isPending ? "Сохраняем..." : "Сохранить заказ"}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel

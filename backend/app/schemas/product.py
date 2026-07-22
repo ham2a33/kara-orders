@@ -54,6 +54,7 @@ class ProductRead(BaseModel):
     company_id: UUID
     category_id: UUID | None = None
     name: str
+    manufacturer: str | None = None
     sku: str | None = None
     barcode: str | None = None
     aliases: list[str] = Field(default_factory=list)
@@ -78,6 +79,7 @@ class ProductRead(BaseModel):
 
 class ProductCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
+    manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)
     barcode: str | None = Field(default=None, max_length=80)
     aliases: list[str] = Field(default_factory=list)
@@ -96,6 +98,7 @@ class ProductCreateRequest(BaseModel):
 
 class ProductUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=255)
+    manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)
     barcode: str | None = Field(default=None, max_length=80)
     aliases: list[str] | None = None

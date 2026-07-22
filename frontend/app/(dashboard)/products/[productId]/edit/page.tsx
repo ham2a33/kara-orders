@@ -14,6 +14,7 @@ import { getProduct, updateProduct } from "@/lib/products";
 
 type FormState = {
   name: string;
+  manufacturer: string;
   sku: string;
   barcode: string;
   category: string;
@@ -28,17 +29,18 @@ type FormState = {
 };
 
 const editFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: string; span?: boolean }> = [
-  { id: "name", label: "Product name", span: true },
+  { id: "name", label: "Название товара", span: true },
+  { id: "manufacturer", label: "Производитель", span: true },
   { id: "sku", label: "SKU" },
-  { id: "barcode", label: "Barcode" },
-  { id: "category", label: "Category" },
-  { id: "unit", label: "Unit" },
-  { id: "currency", label: "Currency" },
-  { id: "price", label: "Selling price" },
-  { id: "cost", label: "Cost price" },
-  { id: "tax_rate", label: "Tax rate" },
-  { id: "stock_qty", label: "Opening stock" },
-  { id: "low_stock_threshold", label: "Low stock threshold" },
+  { id: "barcode", label: "Штрихкод" },
+  { id: "category", label: "Категория" },
+  { id: "unit", label: "Единица" },
+  { id: "currency", label: "Валюта" },
+  { id: "price", label: "Цена продажи" },
+  { id: "cost", label: "Себестоимость" },
+  { id: "tax_rate", label: "Налог" },
+  { id: "stock_qty", label: "Начальный остаток" },
+  { id: "low_stock_threshold", label: "Порог низкого остатка" },
 ];
 
 export default function ProductEditPage(): ReactElement {
@@ -55,6 +57,7 @@ export default function ProductEditPage(): ReactElement {
   const product = query.data;
   const [formState, setFormState] = useState<FormState>({
     name: "",
+    manufacturer: "",
     sku: "",
     barcode: "",
     category: "",
@@ -74,6 +77,7 @@ export default function ProductEditPage(): ReactElement {
     }
     setFormState({
       name: product.name ?? "",
+      manufacturer: product.manufacturer ?? "",
       sku: product.sku ?? "",
       barcode: product.barcode ?? "",
       category: product.category ?? "",
@@ -92,6 +96,7 @@ export default function ProductEditPage(): ReactElement {
     mutationFn: () =>
       updateProduct(productId, {
         name: formState.name.trim(),
+        manufacturer: formState.manufacturer.trim() || null,
         sku: formState.sku.trim() || null,
         barcode: formState.barcode.trim() || null,
         category: formState.category.trim() || null,
@@ -114,17 +119,17 @@ export default function ProductEditPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Editor</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Edit product</h1>
+        <Badge>Редактор</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Редактирование товара</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Update product {productId} with the same clean entry experience used for new catalog items.
+          Обновляйте товар {productId} в том же чистом интерфейсе, что и при создании новых позиций.
         </p>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Editable fields</CardTitle>
-          <CardDescription>All fields map directly to the API and database model.</CardDescription>
+          <CardTitle>Редактируемые поля</CardTitle>
+          <CardDescription>Все поля напрямую соответствуют API и модели данных.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {editFields.map((field) => (
@@ -138,15 +143,15 @@ export default function ProductEditPage(): ReactElement {
             </div>
           ))}
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="edit-status">Status</Label>
+            <Label htmlFor="edit-status">Статус</Label>
             <select
               id="edit-status"
               className="flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={String(formState.is_active)}
               onChange={(event) => setFormState((current) => ({ ...current, is_active: event.target.value === "true" }))}
             >
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="true">Активный</option>
+              <option value="false">Неактивный</option>
             </select>
           </div>
           {mutation.isError ? (
@@ -156,7 +161,7 @@ export default function ProductEditPage(): ReactElement {
           ) : null}
           <div className="flex flex-wrap gap-3 md:col-span-2">
             <Button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save changes"}
+              {mutation.isPending ? "Сохраняем..." : "Сохранить изменения"}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel

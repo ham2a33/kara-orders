@@ -30,18 +30,18 @@ export default function InventoryPage(): ReactElement {
     <div className="space-y-6">
       <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
-          <Badge>Inventory</Badge>
-          <h1 className="text-3xl font-semibold tracking-tight">Stock overview</h1>
+          <Badge>Склад</Badge>
+          <h1 className="text-3xl font-semibold tracking-tight">Обзор остатков</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Inventory balances, low-stock alerts, and history views are wired to the backend inventory ledger.
+            Остатки, предупреждения о низком запасе и история подключены к backend-реестру склада.
           </p>
         </div>
         <div className="flex gap-3">
           <Button asChild variant="outline">
-            <Link href="/products/inventory/history">History</Link>
+            <Link href="/products/inventory/history">История</Link>
           </Button>
           <Button asChild>
-            <Link href="/products/new">Adjust stock</Link>
+            <Link href="/products/new">Изменить остаток</Link>
           </Button>
         </div>
       </section>
@@ -49,19 +49,19 @@ export default function InventoryPage(): ReactElement {
       <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardDescription>Total stock value</CardDescription>
+            <CardDescription>Общая стоимость склада</CardDescription>
             <CardTitle className="text-3xl">{formatMoney(String(summary.totalStockValue))}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Low stock items</CardDescription>
+            <CardDescription>Позиции с низким запасом</CardDescription>
             <CardTitle className="text-3xl">{formatCount(summary.lowStock)}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Inventory rows</CardDescription>
+            <CardDescription>Строки склада</CardDescription>
             <CardTitle className="text-3xl">{formatCount(summary.movementsToday)}</CardTitle>
           </CardHeader>
         </Card>
@@ -69,8 +69,8 @@ export default function InventoryPage(): ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Current stock</CardTitle>
-          <CardDescription>Simple, glanceable stock control for busy teams.</CardDescription>
+          <CardTitle>Текущий остаток</CardTitle>
+          <CardDescription>Простой контроль склада для занятых команд.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {products.map((row) => (
@@ -83,7 +83,7 @@ export default function InventoryPage(): ReactElement {
                 <span className="text-sm text-muted-foreground">
                   {row.stock_qty ?? "0"} {row.unit}
                 </span>
-                <Badge variant={row.low_stock ? "warning" : "success"}>{row.low_stock ? "Low stock" : "Healthy"}</Badge>
+                <Badge variant={row.low_stock ? "warning" : "success"}>{row.low_stock ? "Низкий запас" : "В норме"}</Badge>
               </div>
             </div>
           ))}

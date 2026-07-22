@@ -63,7 +63,7 @@ export default function BrandingPage(): ReactElement {
       });
     },
     onSuccess: async () => {
-      setMessage("Branding updated successfully.");
+      setMessage("Брендинг успешно обновлён.");
       setCompanyLogoFile(null);
       setInvoiceLogoFile(null);
       if (companyLogoRef.current) {
@@ -80,13 +80,13 @@ export default function BrandingPage(): ReactElement {
     <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
       <Card>
         <CardHeader>
-          <Badge className="w-fit">Branding</Badge>
-          <CardTitle>Company logo and invoice identity</CardTitle>
-          <CardDescription>Keep the visual brand aligned across order review, invoices, and PDFs.</CardDescription>
+          <Badge className="w-fit">Брендинг</Badge>
+          <CardTitle>Логотип компании и оформление счетов</CardTitle>
+          <CardDescription>Сохраняйте единый визуальный стиль в заказах, счетах и PDF.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="companyLogo">Company logo</Label>
+            <Label htmlFor="companyLogo">Логотип компании</Label>
             <Input
               ref={companyLogoRef}
               id="companyLogo"
@@ -96,7 +96,7 @@ export default function BrandingPage(): ReactElement {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="invoiceLogo">Invoice logo</Label>
+            <Label htmlFor="invoiceLogo">Логотип счёта</Label>
             <Input
               ref={invoiceLogoRef}
               id="invoiceLogo"
@@ -107,7 +107,7 @@ export default function BrandingPage(): ReactElement {
           </div>
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="invoicePrefix">Invoice prefix</Label>
+              <Label htmlFor="invoicePrefix">Префикс счёта</Label>
               <Input
                 id="invoicePrefix"
                 value={formState.invoice_prefix}
@@ -115,7 +115,7 @@ export default function BrandingPage(): ReactElement {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="invoiceFormat">Invoice number format</Label>
+              <Label htmlFor="invoiceFormat">Формат номера счёта</Label>
               <Input
                 id="invoiceFormat"
                 value={formState.invoice_number_format}
@@ -137,7 +137,7 @@ export default function BrandingPage(): ReactElement {
           ) : null}
           <div className="flex justify-end">
             <Button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save branding"}
+              {mutation.isPending ? "Сохраняем..." : "Сохранить"}
             </Button>
           </div>
         </CardContent>
@@ -145,15 +145,15 @@ export default function BrandingPage(): ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Preview</CardTitle>
-          <CardDescription>Modern, minimal invoice treatment with generous spacing and rounded surfaces.</CardDescription>
+          <CardTitle>Предпросмотр</CardTitle>
+          <CardDescription>Минималистичное оформление счёта с мягкими отступами и округлёнными формами.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-3xl border bg-muted/30 p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Company logo</p>
-                <p className="font-medium">{company?.name ?? "Your company"}</p>
+                <p className="text-sm text-muted-foreground">Логотип компании</p>
+                <p className="font-medium">{company?.name ?? "Ваша компания"}</p>
               </div>
               <Badge variant="outline">{company?.invoice_prefix ?? formState.invoice_prefix}</Badge>
             </div>
@@ -164,7 +164,7 @@ export default function BrandingPage(): ReactElement {
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {company?.logo_url ? "Company logo uploaded." : "Upload a logo to brand the workspace."}
+            {company?.logo_url ? "Логотип компании загружен." : "Загрузите логотип, чтобы брендировать пространство."}
           </p>
         </CardContent>
       </Card>

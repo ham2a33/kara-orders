@@ -9,6 +9,35 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getAIRecognitions } from "@/lib/ai";
+import { formatDate } from "@/components/platform/shared";
+
+function aiStatusLabel(status: string): string {
+  switch (status) {
+    case "completed":
+      return "Готово";
+    case "needs_review":
+      return "На проверке";
+    case "failed":
+      return "Ошибка";
+    case "converted":
+      return "Создан заказ";
+    default:
+      return status;
+  }
+}
+
+function statusVariant(status: string): "default" | "outline" | "success" | "warning" | "danger" {
+  if (status === "converted" || status === "completed") {
+    return "success";
+  }
+  if (status === "needs_review") {
+    return "warning";
+  }
+  if (status === "failed") {
+    return "danger";
+  }
+  return "outline";
+}
 
 export default function AiHistoryPage(): ReactElement {
   const [search, setSearch] = useState("");
@@ -30,47 +59,47 @@ export default function AiHistoryPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>AI history</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Recognition history</h1>
+        <Badge>История AI</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">История распознаваний</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Review past extractions, confidence scores, and which recognitions were converted into orders.
+          Просматривайте прошлые распознавания, уверенность модели и то, что уже было превращено в заказ.
         </p>
       </section>
 
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Latest recognition runs</CardTitle>
-            <CardDescription>Search, filter, and inspect the AI audit trail.</CardDescription>
+            <CardTitle>Последние распознавания</CardTitle>
+            <CardDescription>Поиск, фильтры и аудит AI-истории из backend.</CardDescription>
           </div>
           <div className="flex gap-3">
             <Button asChild variant="outline">
-              <Link href="/ai">New recognition</Link>
+              <Link href="/ai">Новое распознавание</Link>
             </Button>
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <Input placeholder="Search recognitions" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <Input placeholder="Поиск распознаваний" value={search} onChange={(event) => setSearch(event.target.value)} />
           <select
-            className="h-11 rounded-xl border bg-background px-3 text-sm"
+            className="h-11 rounded-2xl border bg-background px-3 text-sm"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="">All statuses</option>
-            <option value="completed">Completed</option>
-            <option value="needs_review">Needs review</option>
-            <option value="failed">Failed</option>
-            <option value="converted">Converted</option>
+            <option value="">Все статусы</option>
+            <option value="completed">Готово</option>
+            <option value="needs_review">Нужна проверка</option>
+            <option value="failed">Ошибка</option>
+            <option value="converted">Создан заказ</option>
           </select>
           <select
-            className="h-11 rounded-xl border bg-background px-3 text-sm"
+            className="h-11 rounded-2xl border bg-background px-3 text-sm"
             value={inputType}
             onChange={(event) => setInputType(event.target.value)}
           >
-            <option value="">All input types</option>
-            <option value="photo">Photo</option>
-            <option value="voice">Voice</option>
-            <option value="text">Text</option>
+            <option value="">Все типы входа</option>
+            <option value="photo">Фото</option>
+            <option value="voice">Голос</option>
+            <option value="text">Текст</option>
             <option value="pdf">PDF</option>
           </select>
         </CardContent>
@@ -79,45 +108,52 @@ export default function AiHistoryPage(): ReactElement {
       <Card>
         <CardContent className="overflow-hidden p-0">
           <div className="border-b px-6 py-4">
-            <p className="text-sm text-muted-foreground">Total recognitions: {count}</p>
+            <p className="text-sm text-muted-foreground">Всего распознаваний: {count}</p>
           </div>
-          <div className="overflow-x-auto p-6">
-            <table className="w-full min-w-[720px] text-left text-sm">
+
+          <div className="grid gap-3 p-6 md:hidden">
+            {(query.data?.items ?? []).map((item) => (
+              <Link key={item.id} href={`/ai/review/${item.id}`} className="rounded-3xl border p-4 transition-colors hover:bg-muted/40">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{item.id}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{item.input_type}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant={statusVariant(item.status)}>{aiStatusLabel(item.status)}</Badge>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.confidence ?? "—"}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto p-6 md:block">
+            <table className="w-full text-left text-sm">
               <thead className="border-b text-muted-foreground">
                 <tr>
                   <th className="py-3 pr-4 font-medium">ID</th>
-                  <th className="py-3 pr-4 font-medium">Source</th>
-                  <th className="py-3 pr-4 font-medium">Status</th>
-                  <th className="py-3 pr-4 font-medium">Confidence</th>
-                  <th className="py-3 pr-4 font-medium">Order</th>
-                  <th className="py-3 font-medium">Action</th>
+                  <th className="py-3 pr-4 font-medium">Источник</th>
+                  <th className="py-3 pr-4 font-medium">Статус</th>
+                  <th className="py-3 pr-4 font-medium">Уверенность</th>
+                  <th className="py-3 pr-4 font-medium">Заказ</th>
+                  <th className="py-3 font-medium">Действие</th>
                 </tr>
               </thead>
               <tbody>
                 {(query.data?.items ?? []).map((item) => (
                   <tr key={item.id} className="border-b last:border-0">
                     <td className="py-4 pr-4 font-medium">{item.id}</td>
-                    <td className="py-4 pr-4 text-muted-foreground">{item.input_type}</td>
+                    <td className="py-4 pr-4 text-muted-foreground capitalize">{item.input_type}</td>
                     <td className="py-4 pr-4">
-                      <Badge
-                        variant={
-                          item.status === "converted"
-                            ? "success"
-                            : item.status === "needs_review"
-                              ? "warning"
-                              : item.status === "failed"
-                                ? "danger"
-                                : "default"
-                        }
-                      >
-                        {item.status}
-                      </Badge>
+                      <Badge variant={statusVariant(item.status)}>{aiStatusLabel(item.status)}</Badge>
                     </td>
                     <td className="py-4 pr-4 text-muted-foreground">{item.confidence ?? "—"}</td>
                     <td className="py-4 pr-4 text-muted-foreground">{item.created_order_id ?? "—"}</td>
                     <td className="py-4">
                       <Button asChild size="sm" variant="secondary">
-                        <Link href={`/ai/review/${item.id}`}>Review</Link>
+                        <Link href={`/ai/review/${item.id}`}>Проверить</Link>
                       </Button>
                     </td>
                   </tr>

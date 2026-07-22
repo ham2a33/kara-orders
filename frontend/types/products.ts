@@ -25,6 +25,7 @@ export type Product = {
   company_id: string;
   category_id: string | null;
   name: string;
+  manufacturer: string | null;
   sku: string | null;
   barcode: string | null;
   aliases: string[];
@@ -86,6 +87,7 @@ export type ProductInventoryTransaction = {
 
 export type ProductCreatePayload = {
   name: string;
+  manufacturer?: string | null;
   sku?: string | null;
   barcode?: string | null;
   aliases?: string[];

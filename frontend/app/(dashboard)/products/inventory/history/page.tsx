@@ -31,17 +31,17 @@ export default function InventoryHistoryPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Inventory history</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Ledger timeline</h1>
+        <Badge>История склада</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Лента движений</h1>
         <p className="max-w-2xl text-muted-foreground">
-          A transparent audit trail for stock movements, accounting, and warehouse reconciliation.
+          Прозрачный аудит движений склада, учёта и сверки остатков.
         </p>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Transactions</CardTitle>
-          <CardDescription>Each movement maps directly to the inventory transaction endpoint.</CardDescription>
+          <CardTitle>Транзакции</CardTitle>
+          <CardDescription>Каждое движение связано с endpoint транзакций склада.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <select
@@ -62,7 +62,7 @@ export default function InventoryHistoryPage(): ReactElement {
                 <div>
                   <p className="font-medium">{row.transaction_type}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(row.created_at)} · {row.note ?? "No note"}
+                  {formatDate(row.created_at)} · {row.note ?? "Без заметки"}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

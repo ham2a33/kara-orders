@@ -70,10 +70,10 @@ export default function AdminPage(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>Admin</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Super admin console</h1>
+        <SectionBadge>Админ</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Консоль супер-администратора</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          View companies, manage plans, suspend access, and control billing state without touching payment providers.
+          Просматривайте компании, управляйте тарифами, приостанавливайте доступ и контролируйте биллинг без платёжных провайдеров.
         </p>
       </section>
 
@@ -81,7 +81,7 @@ export default function AdminPage(): ReactElement {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-muted-foreground">Companies</p>
+              <p className="text-sm text-muted-foreground">Компании</p>
               <p className="mt-1 text-2xl font-semibold">{formatCount(companiesQuery.data?.total ?? 0)}</p>
             </div>
             <Crown className="h-5 w-5 text-muted-foreground" />
@@ -90,7 +90,7 @@ export default function AdminPage(): ReactElement {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-muted-foreground">Active plans</p>
+              <p className="text-sm text-muted-foreground">Активные тарифы</p>
               <p className="mt-1 text-2xl font-semibold">{formatCount(planOptions.length)}</p>
             </div>
             <ShieldAlert className="h-5 w-5 text-muted-foreground" />
@@ -99,26 +99,26 @@ export default function AdminPage(): ReactElement {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-muted-foreground">Business plan</p>
+              <p className="text-sm text-muted-foreground">Тариф Business</p>
               <p className="mt-1 text-2xl font-semibold">
                 {formatMoney(planOptions.find((plan) => plan.slug === "business")?.price_monthly ?? "0")}
               </p>
             </div>
-            <Badge>Default</Badge>
+            <Badge>По умолчанию</Badge>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-muted-foreground">Company actions</p>
-              <p className="mt-1 text-2xl font-semibold">Live</p>
+              <p className="text-sm text-muted-foreground">Действия с компаниями</p>
+              <p className="mt-1 text-2xl font-semibold">В реальном времени</p>
             </div>
             <ToggleRight className="h-5 w-5 text-muted-foreground" />
           </CardContent>
         </Card>
       </section>
 
-      <Panel title="Company administration" description="Use server-side actions to keep plan state and billing flags in sync.">
+      <Panel title="Управление компаниями" description="Используйте серверные действия, чтобы синхронизировать тарифы и флаги биллинга.">
         <div className="grid gap-4">
           {companies.map((company) => {
             const selectedPlan = selectedPlanByCompany[company.id] ?? planNames.get(company.plan_name) ?? defaultPlanSlug;
@@ -129,7 +129,7 @@ export default function AdminPage(): ReactElement {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold">{company.name}</h3>
                       <Badge variant={companyStatusVariant(company.status)}>{company.status}</Badge>
-                      {company.billing_disabled ? <Badge variant="danger">Billing disabled</Badge> : <Badge variant="outline">Billing enabled</Badge>}
+                      {company.billing_disabled ? <Badge variant="danger">Биллинг отключён</Badge> : <Badge variant="outline">Биллинг включён</Badge>}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {company.email ?? "No company email"} • {company.plan_name} • AI requests {formatCount(company.ai_requests_monthly)}
@@ -141,7 +141,7 @@ export default function AdminPage(): ReactElement {
 
                   <div className="grid gap-3">
                     <label className="grid gap-2 text-sm">
-                      <span className="text-muted-foreground">Plan</span>
+                        <span className="text-muted-foreground">Тариф</span>
                       <select
                         value={selectedPlan}
                         onChange={(event) =>
@@ -163,7 +163,7 @@ export default function AdminPage(): ReactElement {
                         disabled={planMutation.isPending}
                         onClick={() => planMutation.mutate({ companyId: company.id, planSlug: selectedPlan })}
                       >
-                        Change plan
+                        Изменить тариф
                       </Button>
                       <Button
                         type="button"
@@ -172,7 +172,7 @@ export default function AdminPage(): ReactElement {
                         onClick={() => billingMutation.mutate({ companyId: company.id, disabled: !company.billing_disabled })}
                       >
                         {company.billing_disabled ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                        {company.billing_disabled ? "Enable billing" : "Disable billing"}
+                        {company.billing_disabled ? "Включить биллинг" : "Отключить биллинг"}
                       </Button>
                     </div>
                   </div>
@@ -185,7 +185,7 @@ export default function AdminPage(): ReactElement {
                       onClick={() => statusMutation.mutate({ companyId: company.id, status: "suspended" })}
                     >
                       <PauseCircle className="h-4 w-4" />
-                      Suspend
+                      Приостановить
                     </Button>
                     <Button
                       type="button"
@@ -194,7 +194,7 @@ export default function AdminPage(): ReactElement {
                       onClick={() => statusMutation.mutate({ companyId: company.id, status: "active" })}
                     >
                       <PlayCircle className="h-4 w-4" />
-                      Activate
+                      Активировать
                     </Button>
                   </div>
                 </CardContent>
@@ -204,7 +204,7 @@ export default function AdminPage(): ReactElement {
         </div>
       </Panel>
 
-      <Panel title="Plan catalogue" description="Plans are loaded from the internal billing architecture.">
+      <Panel title="Каталог тарифов" description="Тарифы загружаются из внутренней биллинговой архитектуры.">
         <div className="grid gap-4 md:grid-cols-2">
           {planOptions.map((plan) => (
             <div key={plan.id} className="rounded-2xl border bg-muted/30 p-4">

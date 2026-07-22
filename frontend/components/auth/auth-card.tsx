@@ -23,17 +23,17 @@ export function AuthCard({ badge, title, description, children }: AuthCardProps)
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Production-ready auth</CardTitle>
-            <CardDescription>JWT access tokens, HTTP-only refresh cookies, validation, and tenant-aware redirects.</CardDescription>
+            <CardTitle>Готовая аутентификация</CardTitle>
+            <CardDescription>JWT access-токены, HTTP-only refresh cookie, валидация и tenant-aware перенаправления.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl border bg-muted/40 p-4">
-              <p className="text-sm font-medium">Secure session flow</p>
-              <p className="text-sm text-muted-foreground">Access tokens power the dashboard; refresh cookies keep sessions alive.</p>
+              <p className="text-sm font-medium">Безопасная сессия</p>
+              <p className="text-sm text-muted-foreground">Access-токен открывает интерфейс, refresh-cookie продлевает сессию.</p>
             </div>
             <div className="rounded-2xl border bg-muted/40 p-4">
-              <p className="text-sm font-medium">Backend validation</p>
-              <p className="text-sm text-muted-foreground">API errors surface directly on the form for fast correction.</p>
+              <p className="text-sm font-medium">Проверка на сервере</p>
+              <p className="text-sm text-muted-foreground">Ошибки API сразу показываются в форме для быстрого исправления.</p>
             </div>
           </CardContent>
         </Card>

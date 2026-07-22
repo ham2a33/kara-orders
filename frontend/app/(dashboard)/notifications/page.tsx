@@ -23,14 +23,14 @@ export default function NotificationsPage(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>Notifications</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Company notifications</h1>
+        <SectionBadge>Уведомления</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Уведомления компании</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Surface trial warnings, limit warnings, and onboarding messages in a central inbox.
+          Собирайте предупреждения о trial, лимитах и onboarding-сообщения в одном inbox.
         </p>
       </section>
 
-      <Panel title="Inbox" description="Read and archive operational notifications.">
+      <Panel title="Входящие" description="Читайте и архивируйте операционные уведомления.">
         <div className="grid gap-3">
           {query.data?.items.map((notification) => (
             <Card key={notification.id} className="border-muted">
@@ -47,15 +47,15 @@ export default function NotificationsPage(): ReactElement {
                   </div>
                 </div>
                 {notification.status !== "read" ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={markReadMutation.isPending}
-                    onClick={() => markReadMutation.mutate(notification.id)}
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Mark as read
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={markReadMutation.isPending}
+                      onClick={() => markReadMutation.mutate(notification.id)}
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                    Отметить прочитанным
+                    </Button>
                 ) : null}
               </CardContent>
             </Card>

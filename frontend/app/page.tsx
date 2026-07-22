@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AUTH_COOKIE_NAMES } from "@/lib/auth";
 
-const modules = ["Authentication", "Dashboard", "Products", "Orders", "Analytics", "Settings", "AI", "PDF Generator"];
+const modules = ["Аутентификация", "Главная", "Каталог", "Заказы", "Аналитика", "Настройки", "ИИ", "PDF"];
 
 export default async function HomePage(): Promise<ReactElement> {
   const accessToken = (await cookies()).get(AUTH_COOKIE_NAMES.accessToken);
@@ -22,23 +22,23 @@ export default async function HomePage(): Promise<ReactElement> {
         <div className="grid gap-10 lg:grid-cols-[1.3fr_0.9fr] lg:items-center">
           <div className="max-w-3xl space-y-8">
             <Badge variant="default" className="bg-secondary text-secondary-foreground">
-              Production SaaS platform
+              Производственная SaaS-платформа
             </Badge>
             <div className="space-y-5">
               <h1 className="text-5xl font-semibold tracking-tight text-balance text-foreground sm:text-6xl">
                 Kara Orders
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-muted-foreground sm:text-xl">
-                Create orders and invoices quickly, manage your catalog, and run a clean multi-tenant business workspace.
+                Создавайте заказы и счета быстро, управляйте каталогом и ведите аккуратное мультиарендное рабочее пространство.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild>
-                <Link href="/register">Create account</Link>
+                <Link href="/register">Создать аккаунт</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/login">Sign in</Link>
+                <Link href="/login">Войти</Link>
               </Button>
             </div>
 
@@ -50,7 +50,7 @@ export default async function HomePage(): Promise<ReactElement> {
                   </CardHeader>
                   <CardContent>
                     <CardDescription>
-                      Built for production workflows with backend validation and tenant isolation.
+                      Построено для рабочих процессов с серверной валидацией и изоляцией компаний.
                     </CardDescription>
                   </CardContent>
                 </Card>
@@ -60,25 +60,25 @@ export default async function HomePage(): Promise<ReactElement> {
 
           <Card className="overflow-hidden border border-border/70 bg-card/90">
             <CardHeader>
-              <CardTitle>Ready for business</CardTitle>
-              <CardDescription>Fast authentication, protected routes, and production APIs are live.</CardDescription>
+              <CardTitle>Готово к работе</CardTitle>
+              <CardDescription>Быстрая аутентификация, защищённые маршруты и production API уже работают.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl border bg-muted/40 p-4">
                 <p className="text-sm font-medium">Backend</p>
                 <p className="text-sm text-muted-foreground">
-                  FastAPI, SQLAlchemy, Alembic, JWT, and structured logging.
+                  FastAPI, SQLAlchemy, Alembic, JWT и структурированное логирование.
                 </p>
               </div>
               <div className="rounded-2xl border bg-muted/40 p-4">
                 <p className="text-sm font-medium">Frontend</p>
                 <p className="text-sm text-muted-foreground">
-                  Next.js 15, TailwindCSS, shadcn/ui, forms, and real API integration.
+                  Next.js 15, TailwindCSS, shadcn/ui, формы и реальная интеграция с API.
                 </p>
               </div>
               <div className="rounded-2xl border bg-muted/40 p-4">
-                <p className="text-sm font-medium">Runtime</p>
-                <p className="text-sm text-muted-foreground">Docker Compose with PostgreSQL, health checks, and Nginx.</p>
+                <p className="text-sm font-medium">Среда запуска</p>
+                <p className="text-sm text-muted-foreground">Docker Compose с PostgreSQL, health checks и Nginx.</p>
               </div>
             </CardContent>
           </Card>

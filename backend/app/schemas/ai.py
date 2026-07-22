@@ -15,14 +15,29 @@ AIRecognitionStatus = Literal["completed", "needs_review", "failed", "converted"
 AIItemStatus = Literal["matched", "needs_review", "unmatched"]
 
 
+class AICandidateProductRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    manufacturer: str | None = None
+    price: Decimal
+    stock_quantity: Decimal | None = None
+    sku: str | None = None
+    image_url: str | None = None
+
+
 class AIRecognitionItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    product_name: str
+    recognized_name: str
+    product_name: str | None = None
     quantity: Decimal
     unit: str | None = None
     confidence: Decimal
     status: AIItemStatus
+    selected_product_id: UUID | None = None
+    candidate_products: list[AICandidateProductRead] = Field(default_factory=list)
     match_method: str | None = None
     needs_review: bool = False
     matched_product: ProductRead | None = None
@@ -79,6 +94,10 @@ class AITextRecognitionRequest(BaseModel):
 
 class AIRecognitionConfirmRequest(OrderCreateRequest):
     pass
+
+
+class AIRecognitionItemSelectionRequest(BaseModel):
+    selected_product_id: UUID
 
 
 class AIRecognitionResponse(BaseModel):

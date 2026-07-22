@@ -25,7 +25,7 @@ class OrderDraftBuilder:
     def build(self, *, raw_payload: dict[str, Any], matched_items: list[MatchedAIItem]) -> AIRecognitionDraft:
         item_reads = [self.matcher.to_read_item(item) for item in matched_items]
         confidence = self._average_confidence([item.confidence for item in matched_items])
-        status = "needs_review" if any(item.needs_review for item in matched_items) else "completed"
+        status = "needs_review" if any(item.selected_product is None for item in matched_items) else "completed"
         return AIRecognitionDraft(
             raw_payload=raw_payload,
             matched_payload={
@@ -40,18 +40,15 @@ class OrderDraftBuilder:
 
     def _serialize_item(self, item: MatchedAIItem) -> dict[str, Any]:
         return {
-            "product_name": item.product_name,
+            "recognized_name": item.recognized_name,
+            "product_name": item.recognized_name,
             "quantity": str(item.quantity),
             "unit": item.unit,
             "confidence": str(item.confidence),
             "status": item.status,
             "match_method": item.match_method,
             "needs_review": item.needs_review,
-            "matched_product": (
-                self.matcher.to_read_item(item).matched_product.model_dump(mode="json")
-                if item.matched_product
-                else None
-            ),
+            "selected_product_id": str(item.selected_product.id) if item.selected_product else None,
         }
 
     def _average_confidence(self, values: list[Decimal]) -> Decimal | None:

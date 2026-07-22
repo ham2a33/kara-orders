@@ -3,6 +3,7 @@ import type {
   AIRecognition,
   AIRecognitionConfirmPayload,
   AIRecognitionConfirmResponse,
+  AIRecognitionItemSelectionPayload,
   AIRecognitionListResponse,
 } from "@/types/ai";
 
@@ -83,6 +84,17 @@ export async function confirmRecognition(
 ): Promise<AIRecognitionConfirmResponse> {
   return apiClient<AIRecognitionConfirmResponse>(`/ai/order-recognitions/${recognitionId}/confirm`, {
     method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateRecognitionItemSelection(
+  recognitionId: string,
+  itemIndex: number,
+  payload: AIRecognitionItemSelectionPayload,
+): Promise<AIRecognition> {
+  return apiClient<AIRecognition>(`/ai/order-recognitions/${recognitionId}/items/${itemIndex}/selection`, {
+    method: "PATCH",
     body: payload,
   });
 }

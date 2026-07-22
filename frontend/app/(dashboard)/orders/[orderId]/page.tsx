@@ -44,10 +44,10 @@ export default function OrderDetailsPage(): ReactElement {
   const items = order?.items ?? [];
   const metrics = useMemo(
     () => [
-      { label: "Status", value: order?.status ?? "—" },
-      { label: "Subtotal", value: formatMoney(order?.subtotal ?? "0") },
-      { label: "Tax", value: formatMoney(order?.tax_total ?? "0") },
-      { label: "Total", value: formatMoney(order?.total ?? "0") },
+      { label: "Статус", value: order?.status ?? "—" },
+      { label: "Промежуточная сумма", value: formatMoney(order?.subtotal ?? "0") },
+      { label: "Налог", value: formatMoney(order?.tax_total ?? "0") },
+      { label: "Итого", value: formatMoney(order?.total ?? "0") },
     ],
     [order],
   );
@@ -56,31 +56,31 @@ export default function OrderDetailsPage(): ReactElement {
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
-          <Badge>Order details</Badge>
+          <Badge>Детали заказа</Badge>
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight">{order?.invoice_number ?? orderId}</h1>
             <p className="max-w-2xl text-muted-foreground">
-              Order {orderId} with line items, calculated totals, and invoice generation actions.
+              Заказ {orderId} с позициями, рассчитанными суммами и действиями по счёту.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/orders">Back to orders</Link>
+            <Link href="/orders">К заказам</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/orders/${orderId}/edit`}>Edit order</Link>
+            <Link href={`/orders/${orderId}/edit`}>Редактировать заказ</Link>
           </Button>
           <Button asChild>
-            <Link href={`/orders/${orderId}/invoice`}>Invoice preview</Link>
+            <Link href={`/orders/${orderId}/invoice`}>Предпросмотр счёта</Link>
           </Button>
           {order?.deleted_at ? (
             <Button type="button" onClick={() => restoreMutation.mutate(orderId)} disabled={restoreMutation.isPending}>
-              Restore
+              Восстановить
             </Button>
           ) : (
             <Button type="button" variant="secondary" onClick={() => deleteMutation.mutate(orderId)} disabled={deleteMutation.isPending}>
-              Delete
+              Удалить
             </Button>
           )}
         </div>
@@ -106,20 +106,20 @@ export default function OrderDetailsPage(): ReactElement {
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Items</CardTitle>
-            <CardDescription>Review the order lines exactly as the invoice engine will render them.</CardDescription>
+          <CardTitle>Позиции</CardTitle>
+          <CardDescription>Проверьте строки заказа ровно так, как их отрендерит движок счёта.</CardDescription>
           </CardHeader>
           <CardContent className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[680px] text-left text-sm">
                 <thead className="border-b text-muted-foreground">
                   <tr>
-                    <th className="py-3 pr-4 font-medium">Product</th>
-                    <th className="py-3 pr-4 font-medium">Qty</th>
-                    <th className="py-3 pr-4 font-medium">Price</th>
-                    <th className="py-3 pr-4 font-medium">Discount</th>
-                    <th className="py-3 pr-4 font-medium">Tax</th>
-                    <th className="py-3 font-medium">Total</th>
+                    <th className="py-3 pr-4 font-medium">Товар</th>
+                    <th className="py-3 pr-4 font-medium">Кол-во</th>
+                    <th className="py-3 pr-4 font-medium">Цена</th>
+                    <th className="py-3 pr-4 font-medium">Скидка</th>
+                    <th className="py-3 pr-4 font-medium">Налог</th>
+                    <th className="py-3 font-medium">Итого</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,16 +141,16 @@ export default function OrderDetailsPage(): ReactElement {
 
         <Card>
           <CardHeader>
-            <CardTitle>Customer and invoice</CardTitle>
-            <CardDescription>All invoice-ready information sits in one clean summary panel.</CardDescription>
+          <CardTitle>Клиент и счёт</CardTitle>
+          <CardDescription>Вся информация для счёта собрана в одном аккуратном блоке.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Customer: {order?.customer_name ?? "—"}</p>
-            <p>Phone: {order?.customer_phone ?? "—"}</p>
-            <p>Address: {order?.customer_address ?? "—"}</p>
-            <p>Notes: {order?.notes ?? "—"}</p>
-            <p>Created at: {formatDate(order?.created_at ?? null)}</p>
-            <p>Updated at: {formatDate(order?.updated_at ?? null)}</p>
+            <p>Клиент: {order?.customer_name ?? "—"}</p>
+            <p>Телефон: {order?.customer_phone ?? "—"}</p>
+            <p>Адрес: {order?.customer_address ?? "—"}</p>
+            <p>Комментарий: {order?.notes ?? "—"}</p>
+            <p>Создан: {formatDate(order?.created_at ?? null)}</p>
+            <p>Обновлён: {formatDate(order?.updated_at ?? null)}</p>
           </CardContent>
         </Card>
       </div>

@@ -17,26 +17,26 @@ const draftStorageKey = "kara_orders_ai_text_draft";
 
 const inputs = [
   {
-    title: "Photo",
-    description: "Handwritten orders, supplier notes, or paper slips.",
+    title: "Фото",
+    description: "Рукописные заказы, бумажные листы и заметки поставщика.",
     details: "JPG, PNG, WEBP",
   },
   {
-    title: "Voice",
-    description: "Transcribe a spoken order and extract structured items.",
+    title: "Голос",
+    description: "Преобразуйте устный заказ в структуру товаров.",
     details: "MP3, WAV, M4A",
   },
   {
-    title: "Text",
-    description: "Paste a quick text order from a customer or salesperson.",
-    details: "Instant extraction",
+    title: "Текст",
+    description: "Вставьте быстрый текст от клиента или менеджера.",
+    details: "Мгновенное распознавание",
   },
   {
     title: "PDF",
-    description: "Supplier invoices and quotations uploaded as documents.",
-    details: "Production PDF parsing",
+    description: "Счета и коммерческие предложения поставщиков.",
+    details: "Продвинутое PDF-распознавание",
   },
-];
+] as const;
 
 export default function AiPage(): ReactElement {
   const router = useRouter();
@@ -83,28 +83,27 @@ export default function AiPage(): ReactElement {
 
   const saveDraft = (): void => {
     window.localStorage.setItem(draftStorageKey, text);
-    setMessage("Draft saved locally.");
+    setMessage("Черновик сохранён локально.");
   };
 
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
-          <Badge>AI Order Recognition</Badge>
+          <Badge>ИИ-распознавание</Badge>
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">Create orders from any input</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Создание заказа из любого входа</h1>
             <p className="max-w-2xl text-muted-foreground">
-              Upload a photo, record voice, paste free text, or import a supplier PDF. The backend extracts
-              structured items and the user confirms the final order before creation.
+              Загрузите фото, запишите голос, вставьте текст или импортируйте PDF. Backend сам извлечёт позиции, а вы только подтвердите итог.
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/ai/history">Recognition history</Link>
+            <Link href="/ai/history">История распознаваний</Link>
           </Button>
           <Button asChild>
-            <Link href="/orders/new">Manual order</Link>
+            <Link href="/orders/new">Ручной заказ</Link>
           </Button>
         </div>
       </section>
@@ -112,12 +111,12 @@ export default function AiPage(): ReactElement {
       <section className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Text recognition</CardTitle>
-            <CardDescription>Paste a customer request and let the backend extract order lines.</CardDescription>
+            <CardTitle>Распознавание текста</CardTitle>
+            <CardDescription>Вставьте запрос клиента и передайте структуру заказа в backend.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="aiText">Order text</Label>
+              <Label htmlFor="aiText">Текст заказа</Label>
               <textarea
                 id="aiText"
                 rows={6}
@@ -146,10 +145,10 @@ export default function AiPage(): ReactElement {
                   textMutation.mutate(text);
                 }}
               >
-                {textMutation.isPending ? "Extracting..." : "Extract items"}
+                {textMutation.isPending ? "Распознаём..." : "Извлечь позиции"}
               </Button>
               <Button type="button" variant="outline" onClick={saveDraft} disabled={text.trim().length === 0}>
-                Save draft
+                Сохранить черновик
               </Button>
             </div>
           </CardContent>
@@ -164,7 +163,7 @@ export default function AiPage(): ReactElement {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{input.details}</p>
-                {input.title === "Photo" ? (
+                {input.title === "Фото" ? (
                   <>
                     <Input
                       ref={photoRef}
@@ -182,10 +181,10 @@ export default function AiPage(): ReactElement {
                         photoMutation.mutate(photoFile as File);
                       }}
                     >
-                      {photoMutation.isPending ? "Uploading..." : "Open review"}
+                      {photoMutation.isPending ? "Загрузка..." : "Открыть проверку"}
                     </Button>
                   </>
-                ) : input.title === "Voice" ? (
+                ) : input.title === "Голос" ? (
                   <>
                     <Input
                       ref={voiceRef}
@@ -203,7 +202,7 @@ export default function AiPage(): ReactElement {
                         voiceMutation.mutate(voiceFile as File);
                       }}
                     >
-                      {voiceMutation.isPending ? "Uploading..." : "Open review"}
+                      {voiceMutation.isPending ? "Загрузка..." : "Открыть проверку"}
                     </Button>
                   </>
                 ) : input.title === "PDF" ? (
@@ -224,7 +223,7 @@ export default function AiPage(): ReactElement {
                         pdfMutation.mutate(pdfFile as File);
                       }}
                     >
-                      {pdfMutation.isPending ? "Uploading..." : "Open review"}
+                      {pdfMutation.isPending ? "Загрузка..." : "Открыть проверку"}
                     </Button>
                   </>
                 ) : null}

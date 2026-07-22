@@ -11,7 +11,7 @@ export function formatMoney(value: string, currency = "KZT"): string {
   if (Number.isNaN(numeric)) {
     return value;
   }
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency,
     maximumFractionDigits: 2,
@@ -19,7 +19,7 @@ export function formatMoney(value: string, currency = "KZT"): string {
 }
 
 export function formatCount(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("ru-RU").format(value);
 }
 
 export function formatBytes(value: number): string {
@@ -39,7 +39,7 @@ export function formatDate(value: string | null): string {
   if (!value) {
     return "—";
   }
-  return new Date(value).toLocaleString("en-US", {
+  return new Date(value).toLocaleString("ru-RU", {
     year: "numeric",
     month: "short",
     day: "numeric",

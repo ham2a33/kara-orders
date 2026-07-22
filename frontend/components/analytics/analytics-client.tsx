@@ -107,10 +107,10 @@ export function AnalyticsClient(): ReactElement {
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-4">
         <div className="space-y-2">
-          <SectionBadge>Analytics</SectionBadge>
-          <h1 className="text-3xl font-semibold tracking-tight">Business analytics</h1>
+          <SectionBadge>Аналитика</SectionBadge>
+          <h1 className="text-3xl font-semibold tracking-tight">Аналитика бизнеса</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Analyze revenue, orders, products, customers, and inventory with filters that match how teams review performance.
+            Анализируйте выручку, заказы, товары, клиентов и склад с фильтрами, удобными для командного анализа.
           </p>
         </div>
         <SegmentControl value={mode} options={analyticsRangeOptions} onChange={setMode} />
@@ -137,7 +137,7 @@ export function AnalyticsClient(): ReactElement {
               </label>
               <div className="flex items-end">
                 <Button type="button" variant="outline" onClick={() => setMode("last_30_days")}>
-                  Reset range
+                  Сбросить диапазон
                 </Button>
               </div>
             </CardContent>
@@ -158,7 +158,7 @@ export function AnalyticsClient(): ReactElement {
             }}
           >
             <Download className="h-4 w-4" />
-            {downloadingFormat === "csv" ? "Downloading..." : "CSV"}
+            {downloadingFormat === "csv" ? "Скачиваем..." : "CSV"}
           </Button>
           <Button
             type="button"
@@ -174,7 +174,7 @@ export function AnalyticsClient(): ReactElement {
             }}
           >
             <FileSpreadsheet className="h-4 w-4" />
-            {downloadingFormat === "excel" ? "Downloading..." : "Excel"}
+            {downloadingFormat === "excel" ? "Скачиваем..." : "Excel"}
           </Button>
           <Button
             type="button"
@@ -190,7 +190,7 @@ export function AnalyticsClient(): ReactElement {
             }}
           >
             <FileText className="h-4 w-4" />
-            {downloadingFormat === "pdf" ? "Downloading..." : "PDF"}
+            {downloadingFormat === "pdf" ? "Скачиваем..." : "PDF"}
           </Button>
         </div>
       </section>
@@ -205,20 +205,20 @@ export function AnalyticsClient(): ReactElement {
         <Card>
           <CardContent className="flex items-center gap-3 p-6 text-sm text-destructive">
             <AlertCircle className="h-4 w-4" />
-            Analytics could not be loaded. Please try again.
+            Аналитику не удалось загрузить. Попробуйте ещё раз.
           </CardContent>
         </Card>
       ) : revenueQuery.data && ordersQuery.data && productsQuery.data && customersQuery.data ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Completed orders" value={formatCount(ordersQuery.data.status_breakdown.completed_orders)} />
-            <MetricCard label="Cancelled orders" value={formatCount(ordersQuery.data.status_breakdown.cancelled_orders)} />
-            <MetricCard label="Draft orders" value={formatCount(ordersQuery.data.status_breakdown.draft_orders)} />
-            <MetricCard label="Average order value" value={formatMoney(ordersQuery.data.status_breakdown.average_order_value)} />
+            <MetricCard label="Выполненные заказы" value={formatCount(ordersQuery.data.status_breakdown.completed_orders)} />
+            <MetricCard label="Отменённые заказы" value={formatCount(ordersQuery.data.status_breakdown.cancelled_orders)} />
+            <MetricCard label="Черновики заказов" value={formatCount(ordersQuery.data.status_breakdown.draft_orders)} />
+            <MetricCard label="Средний чек заказа" value={formatMoney(ordersQuery.data.status_breakdown.average_order_value)} />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Revenue by day" description="Completed revenue across the selected range.">
+            <Panel title="Выручка по дням" description="Выручка по завершённым заказам за выбранный период.">
               {revenueDaily.length > 0 ? (
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
@@ -238,11 +238,11 @@ export function AnalyticsClient(): ReactElement {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <EmptyState text="No revenue in this period." />
+                <EmptyState text="За этот период выручки нет." />
               )}
             </Panel>
 
-            <Panel title="Orders by day" description="Order volume across the selected range.">
+            <Panel title="Заказы по дням" description="Объём заказов за выбранный период.">
               {ordersDaily.length > 0 ? (
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
@@ -256,13 +256,13 @@ export function AnalyticsClient(): ReactElement {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <EmptyState text="No orders in this period." />
+                <EmptyState text="За этот период заказов нет." />
               )}
             </Panel>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Revenue by month" description="Monthly trend for a broader view.">
+            <Panel title="Выручка по месяцам" description="Месячный тренд для более широкого обзора.">
               {revenueMonthly.length > 0 ? (
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
@@ -276,11 +276,11 @@ export function AnalyticsClient(): ReactElement {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <EmptyState text="Monthly revenue will appear here." />
+                <EmptyState text="Здесь появится месячная выручка." />
               )}
             </Panel>
 
-            <Panel title="Orders by month" description="Monthly order volume.">
+            <Panel title="Заказы по месяцам" description="Месячный объём заказов.">
               {ordersMonthly.length > 0 ? (
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
@@ -294,53 +294,53 @@ export function AnalyticsClient(): ReactElement {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <EmptyState text="Monthly orders will appear here." />
+                <EmptyState text="Здесь появятся месячные заказы." />
               )}
             </Panel>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-3">
-            <Panel title="Top products" description="Highest selling items by revenue.">
+            <Panel title="Топ товаров" description="Самые продаваемые позиции по выручке.">
               <div className="flex flex-col gap-3">
                 {productsQuery.data.top_products.slice(0, 6).map((product) => (
                   <div key={`${product.product_name}-${product.sku ?? "sku"}`} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
                     <div>
                       <p className="font-medium">{product.product_name}</p>
-                      <p className="text-xs text-muted-foreground">{product.sku ?? "No SKU"}</p>
+                      <p className="text-xs text-muted-foreground">{product.sku ?? "Без SKU"}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(product.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(Number(product.quantity_sold))} sold</p>
+                      <p className="text-xs text-muted-foreground">{formatCount(Number(product.quantity_sold))} продано</p>
                     </div>
                   </div>
                 ))}
               </div>
             </Panel>
 
-            <Panel title="Top categories" description="Revenue by product category.">
+            <Panel title="Топ категорий" description="Выручка по категориям товаров.">
               <div className="flex flex-col gap-3">
                 {productsQuery.data.top_categories.slice(0, 6).map((category) => (
                   <div key={category.category_name} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
                     <div>
                       <p className="font-medium">{category.category_name}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(category.product_count)} products</p>
+                      <p className="text-xs text-muted-foreground">{formatCount(category.product_count)} товаров</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(category.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(Number(category.quantity_sold))} sold</p>
+                      <p className="text-xs text-muted-foreground">{formatCount(Number(category.quantity_sold))} продано</p>
                     </div>
                   </div>
                 ))}
               </div>
             </Panel>
 
-            <Panel title="Inventory summary" description="Current inventory health.">
+            <Panel title="Сводка склада" description="Текущее состояние склада.">
               <div className="grid gap-3">
                 <Card className="border-dashed">
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-2">
                       <Layers3 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Inventory value</span>
+                      <span className="text-sm">Стоимость склада</span>
                     </div>
                     <span className="font-medium">{formatMoney(productsQuery.data.inventory_summary.inventory_value)}</span>
                   </CardContent>
@@ -349,7 +349,7 @@ export function AnalyticsClient(): ReactElement {
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-2">
                       <PackageSearch className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Low stock</span>
+                      <span className="text-sm">Низкий запас</span>
                     </div>
                     <span className="font-medium">{formatCount(productsQuery.data.inventory_summary.low_stock_products)}</span>
                   </CardContent>
@@ -358,7 +358,7 @@ export function AnalyticsClient(): ReactElement {
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Out of stock</span>
+                      <span className="text-sm">Нет в наличии</span>
                     </div>
                     <span className="font-medium">{formatCount(productsQuery.data.inventory_summary.out_of_stock_products)}</span>
                   </CardContent>
@@ -368,24 +368,24 @@ export function AnalyticsClient(): ReactElement {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Top customers" description="Customers by completed order revenue.">
+            <Panel title="Топ клиентов" description="Клиенты по выручке от завершённых заказов.">
               <div className="flex flex-col gap-3">
                 {customersQuery.data.top_customers.slice(0, 8).map((customer) => (
                   <div key={`${customer.customer_name}-${customer.customer_phone ?? "phone"}`} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
                     <div>
                       <p className="font-medium">{customer.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">{customer.customer_phone ?? "No phone"}</p>
+                      <p className="text-xs text-muted-foreground">{customer.customer_phone ?? "Без телефона"}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(customer.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(customer.order_count)} orders</p>
+                      <p className="text-xs text-muted-foreground">{formatCount(customer.order_count)} заказов</p>
                     </div>
                   </div>
                 ))}
               </div>
             </Panel>
 
-            <Panel title="Recent orders" description="Latest activity within the selected range.">
+            <Panel title="Последние заказы" description="Последняя активность за выбранный период.">
               <div className="flex flex-col gap-3">
                 {ordersQuery.data.recent_orders.slice(0, 8).map((order) => (
                   <div key={order.id} className="flex items-center justify-between gap-4 rounded-2xl border p-4">

@@ -62,22 +62,22 @@ export default function ProductCategoriesPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Categories</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Category tree</h1>
+        <Badge>Категории</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Дерево категорий</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Organize products with nested categories, product counts, and a fast search surface.
+          Структурируйте товары вложенными категориями, количеством товаров и быстрым поиском.
         </p>
       </section>
 
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Search categories</CardTitle>
-            <CardDescription>Designed to scale across broad and deeply nested catalog trees.</CardDescription>
+            <CardTitle>Поиск категорий</CardTitle>
+            <CardDescription>Подходит для широких и глубоко вложенных деревьев каталога.</CardDescription>
           </div>
           <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-            <Input className="w-full md:w-64" placeholder="Search categories" value={search} onChange={(event) => setSearch(event.target.value)} />
-            <Input placeholder="Category name" value={name} onChange={(event) => setName(event.target.value)} />
+            <Input className="w-full md:w-64" placeholder="Поиск категорий" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <Input placeholder="Название категории" value={name} onChange={(event) => setName(event.target.value)} />
             <Button
               type="button"
               disabled={mutation.isPending || name.trim().length === 0 || slug.trim().length === 0}
@@ -88,9 +88,9 @@ export default function ProductCategoriesPage(): ReactElement {
                 })
               }
             >
-              Add category
+              Добавить категорию
             </Button>
-            <Input placeholder="Category slug" value={slug} onChange={(event) => setSlug(event.target.value)} />
+            <Input placeholder="Slug категории" value={slug} onChange={(event) => setSlug(event.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -105,7 +105,7 @@ export default function ProductCategoriesPage(): ReactElement {
                 <p className="font-medium">{category.name}</p>
                 <p className="text-sm text-muted-foreground">{category.depth}</p>
               </div>
-              <Badge variant="success">{category.count} products</Badge>
+                <Badge variant="success">{category.count} товаров</Badge>
             </div>
           ))}
         </CardContent>

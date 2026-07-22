@@ -2,38 +2,68 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { confirmRecognition, getAIRecognition } from "@/lib/ai";
+import { confirmRecognition, getAIRecognition, updateRecognitionItemSelection } from "@/lib/ai";
 import { extractErrorMessage } from "@/lib/errors";
+import { formatMoney } from "@/components/platform/shared";
+import type { AIRecognition, AIRecognitionItem } from "@/types/ai";
 
-type DraftItem = {
-  product_id: string;
-  product_name: string;
-  quantity: string;
-  discount_amount: string;
-  confidence: string;
-  status: string;
-  matched_product_name: string;
+type FormState = {
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  notes: string;
 };
+
+function buildSelectionMap(recognition: AIRecognition | undefined): Record<number, string> {
+  if (!recognition) {
+    return {};
+  }
+  return recognition.items.reduce<Record<number, string>>((accumulator, item, index) => {
+    const fallbackSelected =
+      item.selected_product_id ??
+      item.matched_product?.id ??
+      (item.candidate_products.length === 1 ? item.candidate_products[0]?.id ?? null : null);
+    if (fallbackSelected) {
+      accumulator[index] = fallbackSelected;
+    }
+    return accumulator;
+  }, {});
+}
+
+function resolveSelectedProductId(item: AIRecognitionItem, index: number, selectedProductIds: Record<number, string>): string | null {
+  return (
+    selectedProductIds[index] ??
+    item.selected_product_id ??
+    item.matched_product?.id ??
+    (item.candidate_products.length === 1 ? item.candidate_products[0]?.id ?? null : null)
+  );
+}
+
+function candidateLabel(candidate: AIRecognitionItem["candidate_products"][number]): string {
+  return candidate.manufacturer?.trim() || candidate.name;
+}
 
 export default function AiReviewPage(): ReactElement {
   const params = useParams<{ recognitionId: string }>();
   const recognitionId = params.recognitionId;
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
-  const [notes, setNotes] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
+
+  const [formState, setFormState] = useState<FormState>({
+    customerName: "",
+    customerPhone: "",
+    customerAddress: "",
+    notes: "",
+  });
+  const [selectedProductIds, setSelectedProductIds] = useState<Record<number, string>>({});
 
   const query = useQuery({
     queryKey: ["ai-recognition", recognitionId],
@@ -42,55 +72,71 @@ export default function AiReviewPage(): ReactElement {
   });
 
   useEffect(() => {
-    if (!query.data) {
-      return;
-    }
-    setDraftItems(
-      query.data.items.map((item) => ({
-        product_id: item.matched_product?.id ?? "",
-        product_name: item.product_name,
-        quantity: String(item.quantity),
-        discount_amount: "0",
-        confidence: String(item.confidence),
-        status: item.status,
-        matched_product_name: item.matched_product?.name ?? "",
-      })),
-    );
+    setSelectedProductIds(buildSelectionMap(query.data));
   }, [query.data]);
+
+  const items = query.data?.items ?? [];
+  const hasUnresolvedItems = useMemo(
+    () => items.some((item, index) => resolveSelectedProductId(item, index, selectedProductIds) === null),
+    [items, selectedProductIds],
+  );
+
+  const selectionMutation = useMutation({
+    mutationFn: ({ itemIndex, selectedProductId }: { itemIndex: number; selectedProductId: string }) =>
+      updateRecognitionItemSelection(recognitionId, itemIndex, { selected_product_id: selectedProductId }),
+    onSuccess: async (recognition) => {
+      queryClient.setQueryData(["ai-recognition", recognitionId], recognition);
+      setSelectedProductIds(buildSelectionMap(recognition));
+      await queryClient.invalidateQueries({ queryKey: ["ai-history"] });
+    },
+    onError: () => {
+      setSelectedProductIds(buildSelectionMap(query.data));
+    },
+  });
 
   const confirmMutation = useMutation({
     mutationFn: () =>
       confirmRecognition(recognitionId, {
-        customer_name: customerName.trim() || null,
-        customer_phone: customerPhone.trim() || null,
-        customer_address: customerAddress.trim() || null,
-        notes: notes.trim() || null,
+        customer_name: formState.customerName.trim() || null,
+        customer_phone: formState.customerPhone.trim() || null,
+        customer_address: formState.customerAddress.trim() || null,
+        notes: formState.notes.trim() || null,
         status: "draft",
-        items: draftItems.map((item) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          discount_amount: item.discount_amount || 0,
-        })),
+        items: items.map((item, index) => {
+          const selectedProductId = resolveSelectedProductId(item, index, selectedProductIds);
+          if (!selectedProductId) {
+            throw new Error("Выберите товар для всех позиций.");
+          }
+          return {
+            product_id: selectedProductId,
+            quantity: item.quantity,
+            discount_amount: "0",
+          };
+        }),
       }),
     onSuccess: async (response) => {
-      setMessage("Recognition converted into an order.");
       await queryClient.invalidateQueries({ queryKey: ["ai-history"] });
       router.push(`/orders/${response.order.id}`);
     },
   });
 
-  const canConfirm = useMemo(
-    () => draftItems.length > 0 && draftItems.every((item) => item.product_id.trim().length > 0),
-    [draftItems],
-  );
+  const createProductHref = (item: AIRecognitionItem, index: number): string => {
+    const searchParams = new URLSearchParams({
+      prefillName: item.recognized_name,
+      returnToRecognitionId: recognitionId,
+      returnToItemIndex: String(index),
+      returnToPath: `/ai/review/${recognitionId}`,
+    });
+    return `/products/new?${searchParams.toString()}`;
+  };
 
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Review</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Review recognition {recognitionId}</h1>
+        <Badge>Проверка AI-заказа</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Проверка распознавания {recognitionId}</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Confirm product matches, adjust quantities, and create the final order only after approval.
+          Когда AI не может однозначно выбрать товар, мы не гадаем. Выберите позицию вручную и только затем создавайте заказ.
         </p>
       </section>
 
@@ -100,132 +146,174 @@ export default function AiReviewPage(): ReactElement {
         </Card>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Matched and unmatched items</CardTitle>
-            <CardDescription>Product mapping stays editable until the order is confirmed.</CardDescription>
+            <CardTitle>Позиции распознавания</CardTitle>
+            <CardDescription>Селектор появляется только там, где есть неоднозначность каталога.</CardDescription>
           </CardHeader>
-          <CardContent className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left text-sm">
-                <thead className="border-b text-muted-foreground">
-                  <tr>
-                    <th className="py-3 pr-4 font-medium">Product</th>
-                    <th className="py-3 pr-4 font-medium">Matched product</th>
-                    <th className="py-3 pr-4 font-medium">Product ID</th>
-                    <th className="py-3 pr-4 font-medium">Quantity</th>
-                    <th className="py-3 pr-4 font-medium">Confidence</th>
-                    <th className="py-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {draftItems.map((item, index) => (
-                    <tr key={`${item.product_name}-${index}`} className="border-b last:border-0">
-                      <td className="py-4 pr-4 font-medium">{item.product_name}</td>
-                      <td className="py-4 pr-4 text-muted-foreground">{item.matched_product_name || "—"}</td>
-                      <td className="py-4 pr-4">
-                        <Input
-                          value={item.product_id}
-                          onChange={(event) =>
-                            setDraftItems((current) =>
-                              current.map((currentItem, currentIndex) =>
-                                currentIndex === index
-                                  ? { ...currentItem, product_id: event.target.value }
-                                  : currentItem,
-                              ),
-                            )
-                          }
-                          className="max-w-72"
-                          placeholder="Paste product ID"
-                        />
-                      </td>
-                      <td className="py-4 pr-4">
-                        <Input
-                          value={item.quantity}
-                          onChange={(event) =>
-                            setDraftItems((current) =>
-                              current.map((currentItem, currentIndex) =>
-                                currentIndex === index ? { ...currentItem, quantity: event.target.value } : currentItem,
-                              ),
-                            )
-                          }
-                          className="max-w-28"
-                        />
-                      </td>
-                      <td className="py-4 pr-4 text-muted-foreground">{item.confidence}</td>
-                      <td className="py-4">
-                        <Badge
-                          variant={
-                            item.status === "matched"
-                              ? "success"
-                              : item.status === "needs_review"
-                                ? "warning"
-                                : "default"
-                          }
-                        >
-                          {item.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <CardContent className="space-y-4">
+            {items.map((item, index) => {
+              const selectedProductId = resolveSelectedProductId(item, index, selectedProductIds);
+              const candidateCount = item.candidate_products.length;
+              const isResolved = Boolean(selectedProductId);
+              const isExactMatch = candidateCount === 1;
+              const isUnresolvedMultiple = candidateCount > 1 && !isResolved;
+              const isNotFound = candidateCount === 0;
+              const selectedCandidate =
+                item.candidate_products.find((candidate) => candidate.id === selectedProductId) ??
+                (candidateCount === 1 ? item.candidate_products[0] ?? null : null);
+
+              return (
+                <div key={`${item.recognized_name}-${index}`} className="rounded-3xl border bg-card p-4 md:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-lg font-medium">{item.recognized_name}</p>
+                      <p className="text-sm text-muted-foreground">Количество: {item.quantity}</p>
+                    </div>
+                    <Badge variant={isNotFound ? "danger" : isUnresolvedMultiple ? "warning" : "success"}>
+                      {isNotFound ? "Товар не найден" : isUnresolvedMultiple ? "Требует выбора" : "Готово"}
+                    </Badge>
+                  </div>
+
+                  {isNotFound ? (
+                    <div className="mt-4 rounded-2xl border border-dashed bg-muted/20 p-4">
+                      <p className="font-medium">⚠️ Товар не найден.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Добавьте товар в каталог, затем мы автоматически привяжем его к этой позиции.
+                      </p>
+                      <Button asChild className="mt-4">
+                        <Link href={createProductHref(item, index)}>Создать товар</Link>
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {isExactMatch && selectedCandidate ? (
+                    <div className="mt-4 rounded-2xl border bg-muted/20 p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium">{candidateLabel(selectedCandidate)}</p>
+                          <p className="text-sm text-muted-foreground">{selectedCandidate.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{formatMoney(selectedCandidate.price)}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Остаток: {selectedCandidate.stock_quantity ?? "0"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {candidateCount > 1 ? (
+                    <div className="mt-4 space-y-3">
+                      <p className="text-sm font-medium">Выберите товар:</p>
+                      <div className="divide-y overflow-hidden rounded-2xl border">
+                        {item.candidate_products.map((candidate) => {
+                          const checked = selectedProductId === candidate.id;
+                          return (
+                            <label
+                              key={candidate.id}
+                              className="flex min-h-12 cursor-pointer items-center gap-3 bg-background px-4 py-3 transition-colors hover:bg-muted/40"
+                            >
+                              <input
+                                type="radio"
+                                name={`recognition-item-${index}`}
+                                className="h-4 w-4 shrink-0"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedProductIds((current) => ({ ...current, [index]: candidate.id }));
+                                  selectionMutation.mutate({ itemIndex: index, selectedProductId: candidate.id });
+                                }}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="min-w-0">
+                                    <p className="font-medium">{candidateLabel(candidate)}</p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {candidate.name}
+                                      {candidate.sku ? ` • SKU ${candidate.sku}` : ""}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    <p className="font-medium">{formatMoney(candidate.price)}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Остаток: {candidate.stock_quantity ?? "0"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Create order</CardTitle>
-            <CardDescription>Confirm customer details before sending the order to the OrderService.</CardDescription>
+            <CardTitle>Создать заказ</CardTitle>
+            <CardDescription>Подтвердите данные клиента и создайте заказ только после выбора всех товаров.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customerName">Customer name</Label>
-              <Input id="customerName" value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
+              <Label htmlFor="customerName">Имя клиента</Label>
+              <Input
+                id="customerName"
+                value={formState.customerName}
+                onChange={(event) => setFormState((current) => ({ ...current, customerName: event.target.value }))}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customerPhone">Phone</Label>
-              <Input id="customerPhone" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} />
+              <Label htmlFor="customerPhone">Телефон</Label>
+              <Input
+                id="customerPhone"
+                value={formState.customerPhone}
+                onChange={(event) => setFormState((current) => ({ ...current, customerPhone: event.target.value }))}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customerAddress">Address</Label>
+              <Label htmlFor="customerAddress">Адрес</Label>
               <Input
                 id="customerAddress"
-                value={customerAddress}
-                onChange={(event) => setCustomerAddress(event.target.value)}
+                value={formState.customerAddress}
+                onChange={(event) => setFormState((current) => ({ ...current, customerAddress: event.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <textarea
+              <Label htmlFor="notes">Комментарий</Label>
+              <Input
                 id="notes"
-                rows={4}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Priority delivery this afternoon."
+                value={formState.notes}
+                onChange={(event) => setFormState((current) => ({ ...current, notes: event.target.value }))}
               />
             </div>
-            {message ? (
-              <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
-                {message}
+
+            {hasUnresolvedItems ? (
+              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+                Выберите товар для всех позиций.
               </p>
             ) : null}
-            {confirmMutation.isError ? (
+
+            {(confirmMutation.isError || selectionMutation.isError) ? (
               <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {extractErrorMessage(confirmMutation.error)}
+                {extractErrorMessage(confirmMutation.error ?? selectionMutation.error)}
               </p>
             ) : null}
-            <div className="flex flex-col gap-3">
-              <Button className="w-full" type="button" disabled={confirmMutation.isPending || !canConfirm} onClick={() => confirmMutation.mutate()}>
-                {confirmMutation.isPending ? "Creating..." : "Create order"}
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/ai/history">Back to history</Link>
-              </Button>
-            </div>
+
+            <Button
+              className="w-full"
+              type="button"
+              disabled={confirmMutation.isPending || hasUnresolvedItems || items.length === 0}
+              onClick={() => confirmMutation.mutate()}
+            >
+              {confirmMutation.isPending ? "Создаём заказ..." : "Создать заказ"}
+            </Button>
           </CardContent>
         </Card>
       </div>

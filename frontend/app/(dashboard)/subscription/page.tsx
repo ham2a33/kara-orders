@@ -10,7 +10,7 @@ import { getPlans, getSubscriptionOverview } from "@/lib/platform";
 
 function limitValue(value: number | null | undefined): string {
   if (value === null || value === undefined) {
-    return "Unlimited";
+    return "Без лимита";
   }
   return formatCount(value);
 }
@@ -31,32 +31,32 @@ export default function SubscriptionPage(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>Subscription</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Plan and usage overview</h1>
+        <SectionBadge>Подписка</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Тариф и использование</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Track the active plan, trial window, and account limits for the current company.
+          Отслеживайте активный тариф, пробный период и лимиты текущей компании.
         </p>
       </section>
 
       {subscription ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Current plan" value={subscription.plan.name} description={subscription.plan.slug} />
-          <MetricCard label="Plan price" value={formatMoney(subscription.plan.price_monthly, subscription.plan.currency)} />
-          <MetricCard label="AI requests" value={formatCount(subscription.ai_requests_monthly)} description="This billing period" />
-          <MetricCard label="Storage usage" value={formatCount(subscription.storage_usage_bytes)} description="Bytes tracked" />
+          <MetricCard label="Текущий тариф" value={subscription.plan.name} description={subscription.plan.slug} />
+          <MetricCard label="Цена тарифа" value={formatMoney(subscription.plan.price_monthly, subscription.plan.currency)} />
+          <MetricCard label="AI-запросы" value={formatCount(subscription.ai_requests_monthly)} description="За текущий период" />
+          <MetricCard label="Использование хранилища" value={formatCount(subscription.storage_usage_bytes)} description="Отслеживаемые байты" />
         </section>
       ) : null}
 
       {subscription && limits ? (
-        <Panel title="Subscription details" description="Limits are enforced on the backend and synced monthly.">
+        <Panel title="Детали подписки" description="Лимиты проверяются на backend и синхронизируются ежемесячно.">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[
-              ["Status", subscription.status],
-              ["Trial ends", formatDate(subscription.trial_end)],
-              ["Billing disabled", subscription.billing_disabled ? "Yes" : "No"],
-              ["Subscription start", formatDate(subscription.subscription_start)],
-              ["Subscription end", formatDate(subscription.subscription_end)],
-              ["Setup fee paid", subscription.setup_fee_paid ? "Yes" : "No"],
+              ["Статус", subscription.status],
+              ["Пробный период до", formatDate(subscription.trial_end)],
+              ["Биллинг отключён", subscription.billing_disabled ? "Да" : "Нет"],
+              ["Старт подписки", formatDate(subscription.subscription_start)],
+              ["Окончание подписки", formatDate(subscription.subscription_end)],
+              ["Setup fee оплачена", subscription.setup_fee_paid ? "Да" : "Нет"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">{label}</p>
@@ -69,16 +69,16 @@ export default function SubscriptionPage(): ReactElement {
 
       {limits ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <MetricCard label="Maximum users" value={limitValue(limits.maximum_users)} />
-          <MetricCard label="Maximum products" value={limitValue(limits.maximum_products)} />
-          <MetricCard label="Maximum AI requests" value={limitValue(limits.maximum_ai_requests)} />
-          <MetricCard label="Maximum storage" value={limitValue(limits.maximum_storage_bytes)} />
-          <MetricCard label="Maximum companies" value={limitValue(limits.maximum_companies)} />
-          <MetricCard label="Maximum orders per month" value={limitValue(limits.maximum_orders_per_month)} />
+          <MetricCard label="Макс. пользователей" value={limitValue(limits.maximum_users)} />
+          <MetricCard label="Макс. товаров" value={limitValue(limits.maximum_products)} />
+          <MetricCard label="Макс. AI-запросов" value={limitValue(limits.maximum_ai_requests)} />
+          <MetricCard label="Макс. хранилище" value={limitValue(limits.maximum_storage_bytes)} />
+          <MetricCard label="Макс. компаний" value={limitValue(limits.maximum_companies)} />
+          <MetricCard label="Макс. заказов в месяц" value={limitValue(limits.maximum_orders_per_month)} />
         </section>
       ) : null}
 
-      <Panel title="Available plans" description="The Business plan is the default production plan.">
+      <Panel title="Доступные тарифы" description="Тариф Business — тариф по умолчанию для production.">
         {plansQuery.data ? (
           <div className="grid gap-4 xl:grid-cols-2">
             {plansQuery.data.items.map((plan) => (
@@ -88,8 +88,8 @@ export default function SubscriptionPage(): ReactElement {
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-semibold">{plan.name}</h3>
-                        {plan.is_default ? <Pill tone="success">Default</Pill> : null}
-                        {plan.slug === "business" ? <Pill tone="warning">Recommended</Pill> : null}
+                        {plan.is_default ? <Pill tone="success">По умолчанию</Pill> : null}
+                        {plan.slug === "business" ? <Pill tone="warning">Рекомендуем</Pill> : null}
                       </div>
                       <p className="text-sm text-muted-foreground">{plan.description}</p>
                     </div>
@@ -98,11 +98,11 @@ export default function SubscriptionPage(): ReactElement {
 
                   <div className="grid gap-3 text-sm md:grid-cols-2">
                     <div className="rounded-2xl border bg-muted/20 p-4">
-                      <p className="text-muted-foreground">Monthly price</p>
+                      <p className="text-muted-foreground">Цена в месяц</p>
                       <p className="mt-1 font-medium">{formatMoney(plan.price_monthly, plan.currency)}</p>
                     </div>
                     <div className="rounded-2xl border bg-muted/20 p-4">
-                      <p className="text-muted-foreground">Billing cycle</p>
+                      <p className="text-muted-foreground">Период биллинга</p>
                       <p className="mt-1 font-medium">{plan.billing_cycle}</p>
                     </div>
                   </div>
@@ -111,14 +111,14 @@ export default function SubscriptionPage(): ReactElement {
                     {Object.entries(plan.limits).slice(0, 4).map(([label, value]) => (
                       <div key={label} className="flex items-center justify-between rounded-2xl border px-4 py-3">
                         <span>{label}</span>
-                        <span className="font-medium text-foreground">{value === null ? "Unlimited" : String(value)}</span>
+                        <span className="font-medium text-foreground">{value === null ? "Без лимита" : String(value)}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    {Boolean(plan.features.analytics) ? <Pill tone="secondary">Analytics</Pill> : null}
-                    {Boolean(plan.features.pdf_invoices) ? <Pill tone="secondary">PDF invoices</Pill> : null}
+                    {Boolean(plan.features.analytics) ? <Pill tone="secondary">Аналитика</Pill> : null}
+                    {Boolean(plan.features.pdf_invoices) ? <Pill tone="secondary">PDF-счета</Pill> : null}
                     {Boolean(plan.features.ai_recognition) ? <Pill tone="secondary">AI</Pill> : null}
                   </div>
                 </CardContent>
@@ -139,9 +139,9 @@ export default function SubscriptionPage(): ReactElement {
           <CardContent className="flex items-start gap-3 p-5">
             <Check className="mt-0.5 h-5 w-5 text-emerald-500" />
             <div>
-              <p className="font-medium">Backend-enforced limits</p>
-              <p className="text-sm text-muted-foreground">
-                The subscription layer validates every plan cap on the server before products, orders, AI, or storage actions are accepted.
+            <p className="font-medium">Лимиты проверяются на backend</p>
+            <p className="text-sm text-muted-foreground">
+                Слой подписки проверяет каждый лимит на сервере до того, как будут приняты операции с товарами, заказами, AI или хранилищем.
               </p>
             </div>
           </CardContent>
@@ -150,9 +150,9 @@ export default function SubscriptionPage(): ReactElement {
           <CardContent className="flex items-start gap-3 p-5">
             <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-500" />
             <div>
-              <p className="font-medium">Trial and status flow</p>
-              <p className="text-sm text-muted-foreground">
-                Companies can move from trialing to active, past due, suspended, expired, lifetime, or custom without changing the payment architecture.
+            <p className="font-medium">Пробный период и статусы</p>
+            <p className="text-sm text-muted-foreground">
+                Компании могут переходить между trial, active, past due, suspended, expired, lifetime и custom без изменения платёжной архитектуры.
               </p>
             </div>
           </CardContent>

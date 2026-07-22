@@ -38,15 +38,15 @@ const emptyState: FormState = {
 };
 
 const fields: Array<{ id: keyof FormState; label: string; type?: string }> = [
-  { id: "name", label: "Company name" },
-  { id: "email", label: "Company email", type: "email" },
-  { id: "bin_tax_id", label: "BIN / Tax ID" },
-  { id: "phone", label: "Phone" },
-  { id: "website", label: "Website" },
-  { id: "timezone", label: "Timezone" },
-  { id: "language", label: "Language" },
-  { id: "currency", label: "Currency" },
-  { id: "address", label: "Address" },
+  { id: "name", label: "Название компании" },
+  { id: "email", label: "Эл. почта компании", type: "email" },
+  { id: "bin_tax_id", label: "БИН / ИНН" },
+  { id: "phone", label: "Телефон" },
+  { id: "website", label: "Сайт" },
+  { id: "timezone", label: "Часовой пояс" },
+  { id: "language", label: "Язык" },
+  { id: "currency", label: "Валюта" },
+  { id: "address", label: "Адрес" },
 ];
 
 export default function CompanySettingsPage(): ReactElement {
@@ -68,7 +68,7 @@ export default function CompanySettingsPage(): ReactElement {
       phone: company.phone ?? "",
       website: company.website ?? "",
       timezone: company.timezone ?? "Asia/Almaty",
-      language: company.language ?? "en",
+      language: company.language ?? "ru",
       currency: company.currency ?? "KZT",
       address: company.address ?? "",
       notes: company.notes ?? "",
@@ -85,7 +85,7 @@ export default function CompanySettingsPage(): ReactElement {
   const mutation = useMutation({
     mutationFn: updateMyCompany,
     onSuccess: async () => {
-      setMessage("Company settings saved successfully.");
+      setMessage("Настройки компании успешно сохранены.");
       await queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     },
   });
@@ -109,9 +109,9 @@ export default function CompanySettingsPage(): ReactElement {
   return (
     <Card>
       <CardHeader>
-        <Badge className="w-fit">Company Settings</Badge>
-        <CardTitle>Business information and contact details</CardTitle>
-        <CardDescription>Update the core company record that every invoice and order references.</CardDescription>
+        <Badge className="w-fit">Настройки компании</Badge>
+        <CardTitle>Реквизиты и контактные данные</CardTitle>
+        <CardDescription>Обновите основные данные компании, на которые ссылаются счета и заказы.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5 lg:grid-cols-2">
         {fields.map((field) => (
@@ -131,7 +131,7 @@ export default function CompanySettingsPage(): ReactElement {
           </div>
         ))}
         <div className="lg:col-span-2 space-y-2">
-          <Label htmlFor="notes">Company notes</Label>
+          <Label htmlFor="notes">Заметки о компании</Label>
           <textarea
             id="notes"
             value={formState.notes}
@@ -154,7 +154,7 @@ export default function CompanySettingsPage(): ReactElement {
             Reset
           </Button>
           <Button type="button" onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? "Saving..." : "Save company settings"}
+            {mutation.isPending ? "Сохраняем..." : "Сохранить настройки"}
           </Button>
         </div>
       </CardContent>

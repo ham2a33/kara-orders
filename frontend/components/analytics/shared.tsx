@@ -7,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 
 export const analyticsPresets = [
-  { value: "today", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "last_7_days", label: "Last 7 days" },
-  { value: "last_30_days", label: "Last 30 days" },
-  { value: "this_month", label: "This month" },
-  { value: "last_month", label: "Last month" },
+  { value: "today", label: "Сегодня" },
+  { value: "yesterday", label: "Вчера" },
+  { value: "last_7_days", label: "7 дней" },
+  { value: "last_30_days", label: "30 дней" },
+  { value: "this_month", label: "Этот месяц" },
+  { value: "last_month", label: "Прошлый месяц" },
 ] as const;
 
 export function formatMoney(value: string): string {
@@ -20,11 +20,11 @@ export function formatMoney(value: string): string {
   if (Number.isNaN(numeric)) {
     return value;
   }
-  return numeric.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return numeric.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatCount(value: number): string {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("ru-RU").format(value);
 }
 
 export function SectionBadge({ children }: { children: ReactNode }): ReactElement {
@@ -98,4 +98,3 @@ export function SegmentControl<T extends string>({
     </div>
   );
 }
-

@@ -25,7 +25,7 @@ export function LogoutButton(): ReactElement {
 
   return (
     <Button variant="outline" className="w-full" onClick={handleLogout} disabled={isLoading}>
-      {isLoading ? "Signing out..." : "Sign out"}
+      {isLoading ? "Выходим..." : "Выйти"}
     </Button>
   );
 }

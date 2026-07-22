@@ -44,30 +44,30 @@ export default function NewOrderPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Create order</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Manual order entry</h1>
+        <Badge>Создание заказа</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Ручной ввод заказа</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Search products, add quantities, review totals, and save the order without leaving the dashboard.
+          Ищите товары, добавляйте количество, проверяйте итоги и сохраняйте заказ, не покидая панель.
         </p>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Customer details</CardTitle>
-            <CardDescription>Focused on quick entry with all totals computed by the backend.</CardDescription>
+          <CardTitle>Данные клиента</CardTitle>
+          <CardDescription>Быстрый ввод, а все суммы рассчитывает backend.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="customerName">Customer name</Label>
+              <Label htmlFor="customerName">Имя клиента</Label>
               <Input id="customerName" value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customerPhone">Phone</Label>
+              <Label htmlFor="customerPhone">Телефон</Label>
               <Input id="customerPhone" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="customerAddress">Address</Label>
+              <Label htmlFor="customerAddress">Адрес</Label>
               <Input
                 id="customerAddress"
                 value={customerAddress}
@@ -75,28 +75,28 @@ export default function NewOrderPage(): ReactElement {
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Комментарий</Label>
               <textarea
                 id="notes"
                 rows={4}
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Delivery on Friday afternoon."
+                placeholder="Например: доставка в пятницу после обеда."
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">Статус</Label>
               <select
                 id="status"
                 className="flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                 value={status}
                 onChange={(event) => setStatus(event.target.value as typeof status)}
               >
-                <option value="draft">Draft</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="draft">Черновик</option>
+                <option value="confirmed">Подтверждён</option>
+                <option value="completed">Выполнен</option>
+                <option value="cancelled">Отменён</option>
               </select>
             </div>
           </CardContent>
@@ -104,15 +104,15 @@ export default function NewOrderPage(): ReactElement {
 
         <Card>
           <CardHeader>
-            <CardTitle>Items</CardTitle>
-            <CardDescription>Review mode will show unit price, discount, tax, and totals for each line.</CardDescription>
+          <CardTitle>Позиции</CardTitle>
+          <CardDescription>В режиме проверки будут видны цена, скидка, налог и итоги по каждой строке.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {items.map((item, index) => (
               <div key={index} className="grid gap-3 rounded-2xl border p-4">
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="space-y-2 md:col-span-3">
-                    <Label>Product ID</Label>
+                    <Label>ID товара</Label>
                     <Input
                       value={item.product_id}
                       onChange={(event) =>
@@ -122,11 +122,11 @@ export default function NewOrderPage(): ReactElement {
                           ),
                         )
                       }
-                      placeholder="Paste a product ID"
+                      placeholder="Вставьте ID товара"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Quantity</Label>
+                    <Label>Количество</Label>
                     <Input
                       value={item.quantity}
                       onChange={(event) =>
@@ -139,7 +139,7 @@ export default function NewOrderPage(): ReactElement {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Discount</Label>
+                    <Label>Скидка</Label>
                     <Input
                       value={item.discount_amount}
                       onChange={(event) =>
@@ -161,14 +161,14 @@ export default function NewOrderPage(): ReactElement {
                     onClick={() => setItems((current) => current.filter((_, currentIndex) => currentIndex !== index))}
                     disabled={items.length === 1}
                   >
-                    Remove line
+                    Удалить строку
                   </Button>
                 </div>
               </div>
             ))}
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="outline" onClick={() => setItems((current) => [...current, emptyItem()])}>
-                Add line
+                Добавить строку
               </Button>
               <Button
                 type="button"
@@ -189,7 +189,7 @@ export default function NewOrderPage(): ReactElement {
                   })
                 }
               >
-                {mutation.isPending ? "Saving..." : "Save draft"}
+                {mutation.isPending ? "Сохраняем..." : "Сохранить черновик"}
               </Button>
             </div>
             {mutation.isError ? (

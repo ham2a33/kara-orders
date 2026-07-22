@@ -19,17 +19,17 @@ export default function InvoiceListPage(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="space-y-3">
-        <Badge>Invoice preview</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">Invoice queue</h1>
+        <Badge>Предпросмотр счёта</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">Очередь счетов</h1>
         <p className="max-w-2xl text-muted-foreground">
-          A lightweight view for locating orders, downloading PDFs, and printing invoices on demand.
+          Лёгкий список для поиска заказов, скачивания PDF и печати счетов по требованию.
         </p>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent invoices</CardTitle>
-          <CardDescription>Each invoice is generated server-side from the latest approved order data.</CardDescription>
+          <CardTitle>Последние счета</CardTitle>
+          <CardDescription>Каждый счёт создаётся на сервере из последних подтверждённых данных заказа.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {(query.data?.items ?? []).map((invoice) => (
@@ -37,13 +37,13 @@ export default function InvoiceListPage(): ReactElement {
               <div>
                 <p className="font-medium">{invoice.invoice_number}</p>
                 <p className="text-sm text-muted-foreground">
-                  {invoice.customer_name ?? "—"} · {new Date(invoice.created_at).toLocaleDateString()}
+                  {invoice.customer_name ?? "—"} · {new Date(invoice.created_at).toLocaleDateString("ru-RU")}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">{formatMoney(invoice.total)}</p>
                 <Button asChild size="sm" variant="outline">
-                  <Link href={`/orders/${invoice.id}/invoice`}>Open</Link>
+                  <Link href={`/orders/${invoice.id}/invoice`}>Открыть</Link>
                 </Button>
               </div>
             </div>

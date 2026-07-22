@@ -42,7 +42,7 @@ def _create_owner(db_session, company: Company) -> User:
     return user
 
 
-def test_product_matcher_matches_aliases_and_low_confidence(db_session) -> None:
+def test_product_matcher_matches_aliases_and_auto_selects_single_candidate(db_session) -> None:
     company = _create_company(db_session)
     product = Product(
         company_id=company.id,
@@ -69,7 +69,46 @@ def test_product_matcher_matches_aliases_and_low_confidence(db_session) -> None:
 
     assert matched_items[0].matched_product.id == product.id
     assert matched_items[0].status == "matched"
-    assert matched_items[1].status == "needs_review"
+    assert matched_items[1].selected_product.id == product.id
+    assert matched_items[1].status == "matched"
+
+
+def test_product_matcher_returns_multiple_candidates(db_session) -> None:
+    company = _create_company(db_session)
+    products = [
+        Product(
+            company_id=company.id,
+            name="Pipe 20 mm",
+            manufacturer="KAZPIPE",
+            unit="pcs",
+            currency="KZT",
+            price=Decimal("1200.00"),
+            stock_qty=Decimal("43"),
+            is_active=True,
+        ),
+        Product(
+            company_id=company.id,
+            name="Pipe 20 mm",
+            manufacturer="SteelPro",
+            unit="pcs",
+            currency="KZT",
+            price=Decimal("1180.00"),
+            stock_qty=Decimal("21"),
+            is_active=True,
+        ),
+    ]
+    db_session.add_all(products)
+    db_session.commit()
+
+    matcher = ProductMatcher(db_session, low_confidence_threshold=Decimal("0.75"))
+    matched_items = matcher.match_items(
+        company.id,
+        [AIExtractionItem(product_name="Pipe 20 mm", quantity=Decimal("15"), unit="pcs", confidence=Decimal("0.99"))],
+    )
+
+    assert len(matched_items[0].candidate_products) == 2
+    assert matched_items[0].selected_product is None
+    assert matched_items[0].status == "needs_review"
 
 
 def test_ai_service_text_recognition_uses_catalog_matches(db_session, monkeypatch) -> None:

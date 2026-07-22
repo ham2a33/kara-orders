@@ -43,6 +43,7 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Compan
             unique=True,
             postgresql_where=sa.text("barcode IS NOT NULL"),
         ),
+        Index("ix_products_company_manufacturer", "company_id", "manufacturer"),
         Index("ix_products_company_name", "company_id", "name"),
         Index("ix_products_search_vector", "search_vector", postgresql_using="gin"),
         Index("ix_products_company_active", "company_id", "is_active"),
@@ -50,6 +51,7 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Compan
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    manufacturer: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sku: Mapped[str | None] = mapped_column(String(80), nullable=True)
     barcode: Mapped[str | None] = mapped_column(String(80), nullable=True)
     aliases: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list, server_default=sa.text("'[]'::jsonb"))
@@ -80,7 +82,7 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Compan
         TSVECTOR,
         sa.Computed(
             "to_tsvector('simple', "
-            "coalesce(name, '') || ' ' || coalesce(sku, '') || ' ' || "
+            "coalesce(name, '') || ' ' || coalesce(manufacturer, '') || ' ' || coalesce(sku, '') || ' ' || "
             "coalesce(barcode, '') || ' ' || coalesce(category, '') || ' ' || "
             "coalesce(unit, ''))",
             persisted=True,

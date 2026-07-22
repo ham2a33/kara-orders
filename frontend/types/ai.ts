@@ -2,17 +2,31 @@ export type AIInputType = "photo" | "voice" | "text" | "pdf";
 export type AIRecognitionStatus = "completed" | "needs_review" | "failed" | "converted";
 export type AIItemStatus = "matched" | "needs_review" | "unmatched";
 
+export type AICandidateProduct = {
+  id: string;
+  name: string;
+  manufacturer: string | null;
+  price: string;
+  stock_quantity: string | null;
+  sku: string | null;
+  image_url: string | null;
+};
+
 export type AIRecognitionItem = {
-  product_name: string;
+  recognized_name: string;
+  product_name: string | null;
   quantity: string;
   unit: string | null;
   confidence: string;
   status: AIItemStatus;
+  selected_product_id: string | null;
+  candidate_products: AICandidateProduct[];
   match_method: string | null;
   needs_review: boolean;
   matched_product: {
     id: string;
     name: string;
+    manufacturer: string | null;
     sku: string | null;
     barcode: string | null;
     unit: string;
@@ -93,6 +107,10 @@ export type AIRecognitionConfirmPayload = {
     quantity: string | number;
     discount_amount?: string | number | null;
   }>;
+};
+
+export type AIRecognitionItemSelectionPayload = {
+  selected_product_id: string;
 };
 
 export type AIRecognitionConfirmResponse = {

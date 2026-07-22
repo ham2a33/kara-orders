@@ -68,38 +68,38 @@ export default function SystemSettingsPage(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>System Settings</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Global platform settings</h1>
+        <SectionBadge>Системные настройки</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Глобальные настройки платформы</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Control AI availability, maintenance mode, uploads, and global defaults from one admin screen.
+          Управляйте доступностью AI, режимом обслуживания, загрузками и глобальными настройками из одного экрана администратора.
         </p>
       </section>
 
       <Card>
         <CardContent className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <p className="text-sm text-muted-foreground">AI enabled</p>
-            <p className="mt-1 text-lg font-semibold">{settings?.ai_enabled ? "Yes" : "No"}</p>
+            <p className="text-sm text-muted-foreground">AI включён</p>
+            <p className="mt-1 text-lg font-semibold">{settings?.ai_enabled ? "Да" : "Нет"}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Maintenance mode</p>
-            <p className="mt-1 text-lg font-semibold">{settings?.maintenance_mode ? "On" : "Off"}</p>
+            <p className="text-sm text-muted-foreground">Режим обслуживания</p>
+            <p className="mt-1 text-lg font-semibold">{settings?.maintenance_mode ? "Включён" : "Выключен"}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Upload limit</p>
+            <p className="text-sm text-muted-foreground">Лимит загрузки</p>
             <p className="mt-1 text-lg font-semibold">{settings?.max_upload_size_mb ?? "—"} MB</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Last updated</p>
+            <p className="text-sm text-muted-foreground">Последнее обновление</p>
             <p className="mt-1 text-lg font-semibold">{formatDate(settings?.updated_at ?? null)}</p>
           </div>
         </CardContent>
       </Card>
 
-      <Panel title="Editable settings" description="All changes are validated server-side and audited.">
+      <Panel title="Редактируемые настройки" description="Все изменения проверяются на сервере и попадают в аудит.">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">AI enabled</span>
+            <span className="text-muted-foreground">AI включён</span>
             <select
               value={String(formState.ai_enabled)}
               onChange={(event) =>
@@ -107,12 +107,12 @@ export default function SystemSettingsPage(): ReactElement {
               }
               className="h-11 rounded-xl border bg-background px-3"
             >
-              <option value="true">Enabled</option>
-              <option value="false">Disabled</option>
+              <option value="true">Включён</option>
+              <option value="false">Выключен</option>
             </select>
           </label>
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">Maintenance mode</span>
+            <span className="text-muted-foreground">Режим обслуживания</span>
             <select
               value={String(formState.maintenance_mode)}
               onChange={(event) =>
@@ -120,12 +120,12 @@ export default function SystemSettingsPage(): ReactElement {
               }
               className="h-11 rounded-xl border bg-background px-3"
             >
-              <option value="false">Disabled</option>
-              <option value="true">Enabled</option>
+              <option value="false">Выключен</option>
+              <option value="true">Включён</option>
             </select>
           </label>
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">Max upload size MB</span>
+            <span className="text-muted-foreground">Макс. размер загрузки, МБ</span>
             <input
               type="number"
               value={formState.max_upload_size_mb}
@@ -136,7 +136,7 @@ export default function SystemSettingsPage(): ReactElement {
             />
           </label>
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">Default currency</span>
+            <span className="text-muted-foreground">Валюта по умолчанию</span>
             <input
               value={formState.default_currency}
               onChange={(event) =>
@@ -146,7 +146,7 @@ export default function SystemSettingsPage(): ReactElement {
             />
           </label>
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">Default tax</span>
+            <span className="text-muted-foreground">Налог по умолчанию</span>
             <input
               type="number"
               step="0.01"
@@ -156,7 +156,7 @@ export default function SystemSettingsPage(): ReactElement {
             />
           </label>
           <label className="grid gap-2 text-sm">
-            <span className="text-muted-foreground">Allowed file types</span>
+            <span className="text-muted-foreground">Разрешённые типы файлов</span>
             <input
               value={formState.allowed_file_types}
               onChange={(event) =>
@@ -166,7 +166,7 @@ export default function SystemSettingsPage(): ReactElement {
             />
           </label>
           <label className="grid gap-2 text-sm md:col-span-2">
-            <span className="text-muted-foreground">Notes</span>
+            <span className="text-muted-foreground">Заметки</span>
             <textarea
               value={formState.notes}
               onChange={(event) => setFormState((current) => ({ ...current, notes: event.target.value }))}
@@ -178,7 +178,7 @@ export default function SystemSettingsPage(): ReactElement {
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button type="button" onClick={submit} disabled={mutation.isPending}>
             <Save className="h-4 w-4" />
-            Save changes
+            Сохранить изменения
           </Button>
           <Button
             type="button"
@@ -196,7 +196,7 @@ export default function SystemSettingsPage(): ReactElement {
             }
           >
             <Wrench className="h-4 w-4" />
-            Reset form
+            Сбросить форму
           </Button>
         </div>
       </Panel>

@@ -101,6 +101,7 @@ class ProductService:
             statement = statement.where(
                 or_(
                     Product.name.ilike(term),
+                    Product.manufacturer.ilike(term),
                     Product.sku.ilike(term),
                     Product.barcode.ilike(term),
                     sa.cast(Product.aliases, sa.Text).ilike(term),
@@ -140,6 +141,7 @@ class ProductService:
             category_id=category.id if category else None,
             category=category.name if category else payload.category,
             name=payload.name,
+            manufacturer=payload.manufacturer,
             sku=payload.sku,
             barcode=payload.barcode,
             aliases=payload.aliases,
@@ -578,6 +580,7 @@ class ProductService:
             company_id=product.company_id,
             category_id=product.category_id,
             name=product.name,
+            manufacturer=product.manufacturer,
             sku=product.sku,
             barcode=product.barcode,
             aliases=list(product.aliases or []),

@@ -19,10 +19,10 @@ import { extractErrorMessage } from "@/lib/errors";
 import type { CompanyRole } from "@/types/company";
 
 const roleLabels: Record<CompanyRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  employee: "Employee",
+  owner: "Владелец",
+  admin: "Администратор",
+  manager: "Менеджер",
+  employee: "Сотрудник",
 };
 
 export default function CompanyUsersPage(): ReactElement {
@@ -51,7 +51,7 @@ export default function CompanyUsersPage(): ReactElement {
     mutationFn: inviteCompanyUser,
     onSuccess: async () => {
       setInviteForm({ email: "", full_name: "", role: "employee" });
-      setMessage("Invitation sent successfully.");
+      setMessage("Приглашение отправлено.");
       await queryClient.invalidateQueries({ queryKey: ["company-users"] });
       await queryClient.invalidateQueries({ queryKey: ["company-invitations"] });
     },
@@ -60,7 +60,7 @@ export default function CompanyUsersPage(): ReactElement {
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: CompanyRole }) => changeCompanyUserRole(userId, role),
     onSuccess: async () => {
-      setMessage("User role updated.");
+      setMessage("Роль пользователя обновлена.");
       await queryClient.invalidateQueries({ queryKey: ["company-users"] });
     },
   });
@@ -68,7 +68,7 @@ export default function CompanyUsersPage(): ReactElement {
   const removeMutation = useMutation({
     mutationFn: removeCompanyUser,
     onSuccess: async () => {
-      setMessage("User removed from the company.");
+      setMessage("Пользователь удалён из компании.");
       await queryClient.invalidateQueries({ queryKey: ["company-users"] });
     },
   });
@@ -79,9 +79,9 @@ export default function CompanyUsersPage(): ReactElement {
     <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
       <Card>
         <CardHeader>
-          <Badge className="w-fit">User Management</Badge>
-          <CardTitle>Invite and manage company users</CardTitle>
-          <CardDescription>Owner and admin roles can assign access without leaving the workspace.</CardDescription>
+          <Badge className="w-fit">Пользователи</Badge>
+          <CardTitle>Приглашайте и управляйте сотрудниками</CardTitle>
+          <CardDescription>Владелец и администратор могут назначать доступ, не покидая рабочее пространство.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {users.map((member) => {
@@ -95,7 +95,9 @@ export default function CompanyUsersPage(): ReactElement {
                 <div>
                   <p className="font-medium">{member.full_name ?? member.email}</p>
                   <p className="text-sm text-muted-foreground">{member.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Joined {new Date(member.created_at).toLocaleDateString()}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    В компании с {new Date(member.created_at).toLocaleDateString("ru-RU")}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:items-end">
                   <Badge variant="success" className="w-fit">
@@ -113,9 +115,9 @@ export default function CompanyUsersPage(): ReactElement {
                         }
                         className="h-11 rounded-xl border bg-background px-3 text-sm"
                       >
-                        <option value="admin">Admin</option>
-                        <option value="manager">Manager</option>
-                        <option value="employee">Employee</option>
+                        <option value="admin">Администратор</option>
+                        <option value="manager">Менеджер</option>
+                        <option value="employee">Сотрудник</option>
                       </select>
                       <Button
                         type="button"
@@ -123,7 +125,7 @@ export default function CompanyUsersPage(): ReactElement {
                         disabled={roleMutation.isPending || currentRole === member.role}
                         onClick={() => roleMutation.mutate({ userId: member.id, role: currentRole })}
                       >
-                        Update role
+                        Обновить роль
                       </Button>
                       {member.role !== "owner" ? (
                         <Button
@@ -132,12 +134,12 @@ export default function CompanyUsersPage(): ReactElement {
                           disabled={removeMutation.isPending}
                           onClick={() => removeMutation.mutate(member.id)}
                         >
-                          Remove
+                          Удалить
                         </Button>
                       ) : null}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">Owner access cannot be changed.</p>
+                    <p className="text-xs text-muted-foreground">Роль владельца изменить нельзя.</p>
                   )}
                 </div>
               </div>
@@ -148,12 +150,12 @@ export default function CompanyUsersPage(): ReactElement {
 
       <Card>
         <CardHeader>
-          <CardTitle>Invite user</CardTitle>
-          <CardDescription>Create a new invitation for a teammate.</CardDescription>
+          <CardTitle>Пригласить пользователя</CardTitle>
+          <CardDescription>Создайте новое приглашение для коллеги.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="inviteEmail">Email</Label>
+            <Label htmlFor="inviteEmail">Эл. почта</Label>
             <Input
               id="inviteEmail"
               type="email"
@@ -163,16 +165,16 @@ export default function CompanyUsersPage(): ReactElement {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="inviteName">Full name</Label>
+            <Label htmlFor="inviteName">Полное имя</Label>
             <Input
               id="inviteName"
-              placeholder="Team member name"
+              placeholder="Имя сотрудника"
               value={inviteForm.full_name}
               onChange={(event) => setInviteForm((current) => ({ ...current, full_name: event.target.value }))}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="inviteRole">Role</Label>
+            <Label htmlFor="inviteRole">Роль</Label>
             <select
               id="inviteRole"
               className="flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -181,9 +183,9 @@ export default function CompanyUsersPage(): ReactElement {
                 setInviteForm((current) => ({ ...current, role: event.target.value as Exclude<CompanyRole, "owner"> }))
               }
             >
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="employee">Employee</option>
+              <option value="admin">Администратор</option>
+              <option value="manager">Менеджер</option>
+              <option value="employee">Сотрудник</option>
             </select>
           </div>
           {message ? (
@@ -209,19 +211,19 @@ export default function CompanyUsersPage(): ReactElement {
               });
             }}
           >
-            {inviteMutation.isPending ? "Sending..." : "Send invitation"}
+            {inviteMutation.isPending ? "Отправляем..." : "Отправить приглашение"}
           </Button>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Pending invitations</p>
+              <p className="text-sm font-medium">Ожидающие приглашения</p>
               <Badge variant="outline">{inviterCount}</Badge>
             </div>
             {invitations.map((invitation) => (
               <div key={invitation.id} className="rounded-2xl border bg-muted/30 p-4 text-sm">
                 <p className="font-medium">{invitation.email}</p>
                 <p className="text-muted-foreground">
-                  {roleLabels[invitation.role]} • Expires {new Date(invitation.expires_at).toLocaleDateString()}
+                  {roleLabels[invitation.role]} • Истекает {new Date(invitation.expires_at).toLocaleDateString("ru-RU")}
                 </p>
               </div>
             ))}

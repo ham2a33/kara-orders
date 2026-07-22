@@ -11,6 +11,7 @@ from app.db.models.user import User
 from app.schemas.ai import (
     AIRecognitionConfirmRequest,
     AIRecognitionConfirmResponse,
+    AIRecognitionItemSelectionRequest,
     AIRecognitionListResponse,
     AIRecognitionRead,
     AITextRecognitionRequest,
@@ -91,7 +92,7 @@ def confirm_recognition(
     payload: AIRecognitionConfirmRequest,
     current_user: User = Depends(get_current_user),
     service: AIService = Depends(get_ai_service),
-) -> AIRecognitionConfirmResponse:
+    ) -> AIRecognitionConfirmResponse:
     recognition, order = service.create_order_from_recognition(
         current_user.company_id,
         recognition_id,
@@ -99,3 +100,20 @@ def confirm_recognition(
         payload,
     )
     return AIRecognitionConfirmResponse(recognition=recognition, order=order)
+
+
+@router.patch("/{recognition_id}/items/{item_index}/selection", response_model=AIRecognitionRead)
+def update_item_selection(
+    recognition_id: UUID,
+    item_index: int,
+    payload: AIRecognitionItemSelectionRequest,
+    current_user: User = Depends(get_current_user),
+    service: AIService = Depends(get_ai_service),
+) -> AIRecognitionRead:
+    return service.update_item_selection(
+        current_user.company_id,
+        recognition_id,
+        item_index,
+        payload.selected_product_id,
+        current_user,
+    )

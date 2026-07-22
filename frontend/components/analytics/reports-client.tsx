@@ -36,10 +36,10 @@ export function ReportsClient(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>Reports</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Reports and exports</h1>
+        <SectionBadge>Отчёты</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Отчёты и экспорт</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Export operational analytics for finance, inventory, and leadership reviews.
+          Экспортируйте операционную аналитику для финансов, склада и руководства.
         </p>
       </section>
 
@@ -68,7 +68,7 @@ export function ReportsClient(): ReactElement {
             </label>
             <div className="flex items-end">
               <Button type="button" variant="outline" onClick={() => setMode("last_30_days")}>
-                Reset range
+                Сбросить диапазон
               </Button>
             </div>
           </CardContent>
@@ -90,7 +90,7 @@ export function ReportsClient(): ReactElement {
           }}
         >
           <Download className="h-4 w-4" />
-          {downloadingFormat === "csv" ? "Downloading..." : "CSV export"}
+          {downloadingFormat === "csv" ? "Скачиваем..." : "CSV"}
         </Button>
         <Button
           type="button"
@@ -106,7 +106,7 @@ export function ReportsClient(): ReactElement {
           }}
         >
           <FileSpreadsheet className="h-4 w-4" />
-          {downloadingFormat === "excel" ? "Downloading..." : "Excel export"}
+          {downloadingFormat === "excel" ? "Скачиваем..." : "Excel"}
         </Button>
         <Button
           type="button"
@@ -122,40 +122,40 @@ export function ReportsClient(): ReactElement {
           }}
         >
           <FileText className="h-4 w-4" />
-          {downloadingFormat === "pdf" ? "Downloading..." : "PDF export"}
+          {downloadingFormat === "pdf" ? "Скачиваем..." : "PDF"}
         </Button>
       </div>
 
       {dashboardQuery.data ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Today revenue" value={formatMoney(dashboardQuery.data.metrics.today_revenue)} />
-            <MetricCard label="This month revenue" value={formatMoney(dashboardQuery.data.metrics.month_revenue)} />
-            <MetricCard label="Total products" value={formatCount(dashboardQuery.data.metrics.total_products)} />
-            <MetricCard label="Inventory value" value={formatMoney(dashboardQuery.data.inventory_summary.inventory_value)} />
+            <MetricCard label="Выручка сегодня" value={formatMoney(dashboardQuery.data.metrics.today_revenue)} />
+            <MetricCard label="Выручка за месяц" value={formatMoney(dashboardQuery.data.metrics.month_revenue)} />
+            <MetricCard label="Всего товаров" value={formatCount(dashboardQuery.data.metrics.total_products)} />
+            <MetricCard label="Стоимость склада" value={formatMoney(dashboardQuery.data.inventory_summary.inventory_value)} />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Export checklist" description="These downloads cover the main operational reporting needs.">
+            <Panel title="Чек-лист экспорта" description="Эти выгрузки закрывают основные потребности операционной отчётности.">
               <div className="grid gap-3">
                 <div className="flex items-center justify-between rounded-2xl border p-4">
                   <div className="flex items-center gap-3">
                     <Receipt className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Financial snapshot</span>
+                    <span className="text-sm">Финансовая сводка</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{formatMoney(dashboardQuery.data.metrics.month_revenue)}</span>
+                    <span className="text-sm text-muted-foreground">{formatMoney(dashboardQuery.data.metrics.month_revenue)}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl border p-4">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Stock risk</span>
+                    <span className="text-sm">Риск по складу</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{formatCount(dashboardQuery.data.inventory_summary.low_stock_products)} low stock</span>
+                  <span className="text-sm text-muted-foreground">{formatCount(dashboardQuery.data.inventory_summary.low_stock_products)} низких остатков</span>
                 </div>
               </div>
             </Panel>
 
-            <Panel title="Recent orders" description="Orders included in the current reporting scope.">
+            <Panel title="Последние заказы" description="Заказы, включённые в текущий период отчётности.">
               <div className="flex flex-col gap-3">
                 {dashboardQuery.data.recent_orders.slice(0, 6).map((order) => (
                   <div key={order.id} className="flex items-center justify-between rounded-2xl border p-4">

@@ -29,23 +29,23 @@ export default function CompanyProfilePage(): ReactElement {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <Badge className="w-fit">Company Profile</Badge>
-          <CardTitle>{company?.name ?? "Company profile"}</CardTitle>
+          <Badge className="w-fit">Профиль компании</Badge>
+          <CardTitle>{company?.name ?? "Профиль компании"}</CardTitle>
           <CardDescription>
-            Keep the business profile, branding, and invoice defaults aligned with how the team actually works.
+            Держите профиль компании, брендинг и настройки счетов в соответствии с тем, как команда работает на самом деле.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="rounded-2xl border bg-muted/40 p-4">
-            <p className="text-sm text-muted-foreground">Active users</p>
+            <p className="text-sm text-muted-foreground">Активные пользователи</p>
             <p className="mt-2 text-2xl font-semibold">{formatCount(activeUsers)}</p>
           </div>
           <div className="rounded-2xl border bg-muted/40 p-4">
-            <p className="text-sm text-muted-foreground">Currency</p>
+            <p className="text-sm text-muted-foreground">Валюта</p>
             <p className="mt-2 text-2xl font-semibold">{company?.currency ?? "—"}</p>
           </div>
           <div className="rounded-2xl border bg-muted/40 p-4">
-            <p className="text-sm text-muted-foreground">Updated</p>
+            <p className="text-sm text-muted-foreground">Обновлено</p>
             <p className="mt-2 text-2xl font-semibold">{formatDate(company?.updated_at ?? null)}</p>
           </div>
         </CardContent>
@@ -62,17 +62,17 @@ export default function CompanyProfilePage(): ReactElement {
       <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Company snapshot</CardTitle>
-            <CardDescription>Overview data used across invoices, orders, and user invitations.</CardDescription>
+            <CardTitle>Сводка компании</CardTitle>
+            <CardDescription>Основные данные, используемые в счетах, заказах и приглашениях.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             {[
-              ["Company name", company?.name ?? "—"],
-              ["Email", company?.email ?? "—"],
-              ["Phone", company?.phone ?? "—"],
-              ["Website", company?.website ?? "—"],
-              ["Timezone", company?.timezone ?? "—"],
-              ["Language", company?.language ?? "—"],
+              ["Название компании", company?.name ?? "—"],
+              ["Эл. почта", company?.email ?? "—"],
+              ["Телефон", company?.phone ?? "—"],
+              ["Сайт", company?.website ?? "—"],
+              ["Часовой пояс", company?.timezone ?? "—"],
+              ["Язык", company?.language ?? "—"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">{label}</p>
@@ -84,21 +84,21 @@ export default function CompanyProfilePage(): ReactElement {
 
         <Card>
           <CardHeader>
-            <CardTitle>Quick actions</CardTitle>
-            <CardDescription>Jump into the dedicated company management screens.</CardDescription>
+            <CardTitle>Быстрые действия</CardTitle>
+            <CardDescription>Переходите в отдельные разделы управления компанией.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <Button asChild className="justify-start">
-              <Link href="/dashboard/company/settings">Open settings</Link>
+              <Link href="/dashboard/company/settings">Открыть настройки</Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href="/dashboard/company/branding">Branding</Link>
+              <Link href="/dashboard/company/branding">Брендинг</Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href="/dashboard/company/invoice-settings">Invoice settings</Link>
+              <Link href="/dashboard/company/invoice-settings">Настройки счетов</Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href="/dashboard/company/users">User management</Link>
+              <Link href="/dashboard/company/users">Управление пользователями</Link>
             </Button>
           </CardContent>
         </Card>

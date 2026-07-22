@@ -63,34 +63,34 @@ export default function LoginPage(): ReactElement {
 
   return (
     <AuthCard
-      badge="Authentication"
-      title="Welcome back"
-      description="Sign in to Kara Orders and continue managing companies, products, and orders."
+      badge="Аутентификация"
+      title="С возвращением"
+      description="Войдите в Kara Orders и продолжайте управлять компаниями, товарами и заказами."
     >
       <CardHeader>
-        <CardTitle>Login</CardTitle>
-        <CardDescription>Use your company account to access the dashboard.</CardDescription>
+        <CardTitle>Вход</CardTitle>
+        <CardDescription>Используйте учётную запись компании для доступа к панели.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Электронная почта</Label>
             <Input id="email" type="email" autoComplete="email" {...register("email")} />
             {errors.email ? <p className="text-sm text-destructive">{errors.email.message}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Пароль</Label>
             <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
             {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
           </div>
           {serverError ? <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{serverError}</p> : null}
           <Button className="w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : "Sign in"}
+            {isSubmitting ? "Входим..." : "Войти"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            Need an account?{" "}
+            Нужен аккаунт?{" "}
             <Link className="font-medium text-foreground underline-offset-4 hover:underline" href="/register">
-              Create one
+              Создать
             </Link>
           </p>
         </form>

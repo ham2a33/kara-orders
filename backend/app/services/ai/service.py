@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import replace
-from decimal import Decimal
 from uuid import UUID
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.config import Settings
 from app.core.exceptions import ConfigurationError, NotFoundError, UpstreamServiceError, ValidationAppError
@@ -16,7 +16,6 @@ from app.db.models.user import User
 from app.repositories.ai_recognition_repository import AIRecognitionRepository
 from app.schemas.ai import AIExtractionPayload, AIRecognitionItemRead, AIRecognitionListResponse, AIRecognitionRead, AITextRecognitionRequest
 from app.schemas.order import OrderCreateRequest, OrderRead
-from app.schemas.product import ProductRead
 from app.services.ai.draft_builder import AIRecognitionDraft, OrderDraftBuilder
 from app.services.ai.openai_provider import AIProviderResult, OpenAIProvider
 from app.services.ai.prompt_manager import PromptManager
@@ -302,7 +301,10 @@ class AIService:
         recognition = self.recognitions.get_by_id_and_company(recognition_id, company_id)
         if recognition is None or recognition.deleted_at is not None:
             raise NotFoundError("Recognition not found")
-        order = OrderService(self.session, self.settings).create_order(company_id, current_user, payload)
+        if recognition.created_order_id is not None or recognition.status == "converted":
+            raise ValidationAppError("Recognition already converted")
+        resolved_payload = self._resolve_confirmation_payload(company_id, recognition, payload)
+        order = OrderService(self.session, self.settings).create_order(company_id, current_user, resolved_payload)
         recognition.created_order_id = order.id
         recognition.status = "converted"
         self.session.commit()
@@ -319,7 +321,10 @@ class AIService:
         recognition = self.recognitions.get_by_id_and_company(recognition_id, company_id)
         if recognition is None or recognition.deleted_at is not None:
             raise NotFoundError("Recognition not found")
-        order = OrderService(self.session, self.settings).create_order(company_id, current_user, payload)
+        if recognition.created_order_id is not None or recognition.status == "converted":
+            raise ValidationAppError("Recognition already converted")
+        resolved_payload = self._resolve_confirmation_payload(company_id, recognition, payload)
+        order = OrderService(self.session, self.settings).create_order(company_id, current_user, resolved_payload)
         recognition.created_order_id = order.id
         recognition.status = "converted"
         self.session.commit()
@@ -334,6 +339,58 @@ class AIService:
             metadata={"order_id": str(order.id)},
         )
         return self._serialize_recognition(recognition), order
+
+    def update_item_selection(
+        self,
+        company_id: UUID,
+        recognition_id: UUID,
+        item_index: int,
+        selected_product_id: UUID,
+        current_user: User,
+    ) -> AIRecognitionRead:
+        recognition = self.recognitions.get_by_id_and_company(recognition_id, company_id)
+        if recognition is None or recognition.deleted_at is not None:
+            raise NotFoundError("Recognition not found")
+        if recognition.created_order_id is not None or recognition.status == "converted":
+            raise ValidationAppError("Recognition already converted")
+
+        matched_payload = dict(recognition.matched_payload or {})
+        items = matched_payload.get("items")
+        if not isinstance(items, list):
+            raise ValidationAppError("Recognition items are missing")
+        if item_index < 0 or item_index >= len(items):
+            raise ValidationAppError("Invalid recognition item index")
+
+        item = items[item_index]
+        if not isinstance(item, dict):
+            raise ValidationAppError("Recognition item is invalid")
+
+        resolved_items = self.matcher.resolve_payload_items(company_id, [item])
+        resolved_item = resolved_items[0] if resolved_items else None
+        if resolved_item is not None:
+            candidate_ids = {candidate.id for candidate in resolved_item.candidate_products}
+            if not candidate_ids or selected_product_id not in candidate_ids:
+                raise ValidationAppError("Selected product is not a valid candidate")
+        else:
+            raise ValidationAppError("Recognition item could not be resolved")
+
+        item["selected_product_id"] = str(selected_product_id)
+        matched_payload["items"] = items
+        recognition.matched_payload = matched_payload
+        flag_modified(recognition, "matched_payload")
+        recognition.status = "completed" if self._all_items_selected(company_id, items) else "needs_review"
+        self.session.commit()
+        self.session.refresh(recognition)
+        PlatformService(self.session).log_action(
+            action="ai_recognition_item_selected",
+            company_id=company_id,
+            actor_user_id=current_user.id,
+            resource_type="ai_recognition",
+            resource_id=str(recognition.id),
+            description="AI recognition item selection updated",
+            metadata={"item_index": item_index, "selected_product_id": str(selected_product_id)},
+        )
+        return self._serialize_recognition(recognition)
 
     def _extract_and_match(
         self,
@@ -464,7 +521,7 @@ class AIService:
         return recognition
 
     def _serialize_recognition(self, recognition: AIRecognition) -> AIRecognitionRead:
-        items = self._deserialize_items(recognition.matched_payload)
+        items = self._deserialize_items(recognition.company_id, recognition.matched_payload)
         return AIRecognitionRead(
             id=recognition.id,
             company_id=recognition.company_id,
@@ -490,34 +547,49 @@ class AIService:
             items=items,
         )
 
-    def _deserialize_items(self, payload: dict[str, object] | None) -> list[AIRecognitionItemRead]:
+    def _deserialize_items(self, company_id: UUID, payload: dict[str, object] | None) -> list[AIRecognitionItemRead]:
         if not payload:
             return []
         items = payload.get("items")
         if not isinstance(items, list):
             return []
-        deserialized: list[AIRecognitionItemRead] = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            matched_product = item.get("matched_product")
-            deserialized.append(
-                AIRecognitionItemRead(
-                    product_name=str(item.get("product_name") or ""),
-                    quantity=Decimal(str(item.get("quantity") or "0")),
-                    unit=item.get("unit") if isinstance(item.get("unit"), str) else None,
-                    confidence=Decimal(str(item.get("confidence") or "0")),
-                    status=str(item.get("status") or "unmatched"),
-                    match_method=item.get("match_method") if isinstance(item.get("match_method"), str) else None,
-                    needs_review=bool(item.get("needs_review")),
-                    matched_product=(
-                        ProductRead.model_validate(matched_product)
-                        if isinstance(matched_product, dict)
-                        else None
-                    ),
-                )
+        return self.matcher.resolve_payload_items(company_id, [item for item in items if isinstance(item, dict)])
+
+    def _resolve_confirmation_payload(
+        self,
+        company_id: UUID,
+        recognition: AIRecognition,
+        payload: OrderCreateRequest,
+    ) -> OrderCreateRequest:
+        matched_payload = recognition.matched_payload or {}
+        items = matched_payload.get("items")
+        if not isinstance(items, list) or len(items) != len(payload.items):
+            raise ValidationAppError("Выберите товар для всех позиций.")
+
+        resolved_item_reads = self.matcher.resolve_payload_items(company_id, [item for item in items if isinstance(item, dict)])
+        if len(resolved_item_reads) != len(payload.items):
+            raise ValidationAppError("Выберите товар для всех позиций.")
+
+        resolved_items: list[dict[str, object]] = []
+        for item_payload, resolved_item in zip(payload.items, resolved_item_reads, strict=True):
+            selected_product_id = resolved_item.selected_product_id
+            if selected_product_id is None:
+                raise ValidationAppError("Выберите товар для всех позиций.")
+            if item_payload.product_id != selected_product_id:
+                raise ValidationAppError("Выберите товар для всех позиций.")
+            resolved_items.append(
+                {
+                    "product_id": selected_product_id,
+                    "quantity": item_payload.quantity,
+                    "discount_amount": item_payload.discount_amount,
+                }
             )
-        return deserialized
+
+        return OrderCreateRequest.model_validate({**payload.model_dump(mode="json"), "items": resolved_items})
+
+    def _all_items_selected(self, company_id: UUID, items: list[object]) -> bool:
+        resolved_items = self.matcher.resolve_payload_items(company_id, [item for item in items if isinstance(item, dict)])
+        return bool(resolved_items) and all(item.selected_product_id is not None for item in resolved_items)
 
     def _provider(self) -> OpenAIProvider:
         return OpenAIProvider(self.settings)

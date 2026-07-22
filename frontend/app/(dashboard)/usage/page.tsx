@@ -24,19 +24,19 @@ export default function UsagePage(): ReactElement {
   return (
     <div className="flex flex-col gap-6">
       <section className="space-y-2">
-        <SectionBadge>Usage</SectionBadge>
-        <h1 className="text-3xl font-semibold tracking-tight">Monthly usage tracking</h1>
+        <SectionBadge>Использование</SectionBadge>
+        <h1 className="text-3xl font-semibold tracking-tight">Ежемесячный трекинг использования</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Monitor AI requests, token usage, storage consumption, and recognition speed in one place.
+          Отслеживайте AI-запросы, токены, хранилище и скорость распознавания в одном месте.
         </p>
       </section>
 
       {usage ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="AI requests" value={formatCount(usage.monthly_ai_requests)} />
-          <MetricCard label="Token usage" value={formatCount(usage.monthly_token_usage)} />
-          <MetricCard label="Recognition count" value={formatCount(usage.recognition_count)} />
-          <MetricCard label="Storage usage" value={formatBytes(usage.storage_usage_bytes)} />
+          <MetricCard label="AI-запросы" value={formatCount(usage.monthly_ai_requests)} />
+          <MetricCard label="Использование токенов" value={formatCount(usage.monthly_token_usage)} />
+          <MetricCard label="Количество распознаваний" value={formatCount(usage.recognition_count)} />
+          <MetricCard label="Использование хранилища" value={formatBytes(usage.storage_usage_bytes)} />
         </section>
       ) : null}
 
@@ -45,9 +45,9 @@ export default function UsagePage(): ReactElement {
           <CardContent className="flex items-start gap-3 p-5">
             <Gauge className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">Average recognition time</p>
+              <p className="font-medium">Среднее время распознавания</p>
               <p className="text-sm text-muted-foreground">
-                {usage ? `${usage.average_recognition_time_ms} ms` : "No data yet"}
+                {usage ? `${usage.average_recognition_time_ms} мс` : "Пока нет данных"}
               </p>
             </div>
           </CardContent>
@@ -56,9 +56,9 @@ export default function UsagePage(): ReactElement {
           <CardContent className="flex items-start gap-3 p-5">
             <Database className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">Estimated AI cost</p>
+              <p className="font-medium">Оценочная стоимость AI</p>
               <p className="text-sm text-muted-foreground">
-                {usage ? formatMoney(usage.estimated_ai_cost, subscription?.plan.currency ?? "KZT") : "No data yet"}
+                {usage ? formatMoney(usage.estimated_ai_cost, subscription?.plan.currency ?? "KZT") : "Пока нет данных"}
               </p>
             </div>
           </CardContent>
@@ -67,22 +67,22 @@ export default function UsagePage(): ReactElement {
           <CardContent className="flex items-start gap-3 p-5">
             <HardDrive className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">Period window</p>
+              <p className="font-medium">Период</p>
               <p className="text-sm text-muted-foreground">
-                {usage ? `${formatDate(usage.period_start)} → ${formatDate(usage.period_end)}` : "No usage window"}
+                {usage ? `${formatDate(usage.period_start)} → ${formatDate(usage.period_end)}` : "Нет периода"}
               </p>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <Panel title="Usage breakdown" description="Backend-managed counters reset on monthly boundaries.">
+      <Panel title="Разбивка использования" description="Счётчики управляются backend и сбрасываются ежемесячно.">
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            ["Monthly AI requests", usage?.monthly_ai_requests],
-            ["Monthly tokens", usage?.monthly_token_usage],
-            ["Recognition count", usage?.recognition_count],
-            ["Storage usage", usage ? formatBytes(usage.storage_usage_bytes) : "—"],
+            ["AI-запросы за месяц", usage?.monthly_ai_requests],
+            ["Токены за месяц", usage?.monthly_token_usage],
+            ["Распознавания", usage?.recognition_count],
+            ["Хранилище", usage ? formatBytes(usage.storage_usage_bytes) : "—"],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl border bg-muted/30 p-4">
               <p className="text-sm text-muted-foreground">{label}</p>
@@ -92,12 +92,12 @@ export default function UsagePage(): ReactElement {
         </div>
       </Panel>
 
-      <Panel title="Limit strategy" description="Usage is enforced against the plan attached to the company subscription.">
+      <Panel title="Логика лимитов" description="Использование проверяется относительно тарифа компании.">
         <div className="grid gap-3 md:grid-cols-3">
           {[
-            "AI requests are checked before every recognition request.",
-            "Storage usage is updated after uploads and AI media processing.",
-            "Orders and product counts are validated before create operations.",
+            "AI-запросы проверяются перед каждым распознаванием.",
+            "Использование хранилища обновляется после загрузок и обработки медиа.",
+            "Количество заказов и товаров проверяется до операций создания.",
           ].map((item) => (
             <div key={item} className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground">
               {item}

@@ -97,6 +97,96 @@ def test_ai_text_recognition_and_order_confirmation(client, db_session, monkeypa
     assert history_response.json()["total"] == 1
 
 
+def test_ai_text_recognition_requires_manual_product_selection(client, db_session, monkeypatch) -> None:
+    owner = _register_owner(
+        client,
+        company_name=f"AI Select {uuid4().hex[:8]}",
+        email=f"owner-{uuid4().hex[:8]}@ai-select.example.com",
+    )
+    token = owner["access_token"]
+
+    company = db_session.query(Company).filter(Company.id == owner["company"]["id"]).one()
+    company.tax_percentage = Decimal("12.00")
+    db_session.commit()
+
+    product_a_response = client.post(
+        "/api/v1/products",
+        headers=_auth_headers(token),
+        json={
+            "name": "Pipe 20 mm",
+            "manufacturer": "KAZPIPE",
+            "unit": "pcs",
+            "price": "1200.00",
+            "stock_qty": "43",
+        },
+    )
+    assert product_a_response.status_code == 201, product_a_response.text
+    product_a_id = product_a_response.json()["id"]
+
+    product_b_response = client.post(
+        "/api/v1/products",
+        headers=_auth_headers(token),
+        json={
+            "name": "Pipe 20 mm",
+            "manufacturer": "SteelPro",
+            "unit": "pcs",
+            "price": "1180.00",
+            "stock_qty": "21",
+        },
+    )
+    assert product_b_response.status_code == 201, product_b_response.text
+    _ = product_b_response.json()["id"]
+
+    class FakeProvider:
+        def extract_from_text(self, *args, **kwargs):
+            return AIProviderResult(
+                text='{"items":[{"product_name":"Pipe 20 mm","quantity":15,"unit":"pcs","confidence":0.99}]}',
+                raw_response={"id": "resp_2"},
+                model="gpt-test",
+                usage=AIUsage(input_tokens=12, output_tokens=19, total_tokens=31),
+            )
+
+    monkeypatch.setattr(AIService, "_provider", lambda self: FakeProvider())
+
+    recognition_response = client.post(
+        "/api/v1/ai/order-recognitions/text",
+        headers=_auth_headers(token),
+        json={"text": "Pipe 20 mm 15"},
+    )
+    assert recognition_response.status_code == 201, recognition_response.text
+    recognition = recognition_response.json()
+    recognition_id = recognition["id"]
+    assert recognition["status"] == "needs_review"
+    assert len(recognition["items"][0]["candidate_products"]) == 2
+    assert recognition["items"][0]["selected_product_id"] is None
+
+    selection_response = client.patch(
+        f"/api/v1/ai/order-recognitions/{recognition_id}/items/0/selection",
+        headers=_auth_headers(token),
+        json={"selected_product_id": product_a_id},
+    )
+    assert selection_response.status_code == 200, selection_response.text
+    selected = selection_response.json()
+    assert selected["items"][0]["selected_product_id"] == product_a_id
+
+    confirm_response = client.post(
+        f"/api/v1/ai/order-recognitions/{recognition_id}/confirm",
+        headers=_auth_headers(token),
+        json={
+            "customer_name": "Khan Market",
+            "customer_phone": "+7 700 000 00 00",
+            "customer_address": "Almaty",
+            "notes": "Deliver today",
+            "items": [{"product_id": product_a_id, "quantity": "15", "discount_amount": "0"}],
+        },
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+    confirm_data = confirm_response.json()
+    assert confirm_data["recognition"]["status"] == "converted"
+    assert confirm_data["order"]["items"][0]["product_id"] == product_a_id
+    assert confirm_data["order"]["total"] == "20160.00"
+
+
 def test_ai_pdf_recognition_uses_storage(client, monkeypatch) -> None:
     owner = _register_owner(
         client,

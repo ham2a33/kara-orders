@@ -83,38 +83,38 @@ export default function RegisterPage(): ReactElement {
 
   return (
     <AuthCard
-      badge="Company onboarding"
-      title="Create your company account"
-      description="Register once, then manage products, orders, invoices, AI, and analytics from one workspace."
+      badge="Регистрация компании"
+      title="Создайте аккаунт компании"
+      description="Зарегистрируйтесь один раз, а затем управляйте товарами, заказами, счетами, ИИ и аналитикой из одного пространства."
     >
       <CardHeader>
-        <CardTitle>Create account</CardTitle>
-        <CardDescription>Set up a new company and your owner account.</CardDescription>
+        <CardTitle>Создать аккаунт</CardTitle>
+        <CardDescription>Настройте новую компанию и учётную запись владельца.</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-2">
-            <Label htmlFor="companyName">Company name</Label>
+            <Label htmlFor="companyName">Название компании</Label>
             <Input id="companyName" autoComplete="organization" {...register("companyName")} />
             {errors.companyName ? <p className="text-sm text-destructive">{errors.companyName.message}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName">Полное имя</Label>
             <Input id="fullName" autoComplete="name" {...register("fullName")} />
             {errors.fullName ? <p className="text-sm text-destructive">{errors.fullName.message}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Электронная почта</Label>
             <Input id="email" type="email" autoComplete="email" {...register("email")} />
             {errors.email ? <p className="text-sm text-destructive">{errors.email.message}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Пароль</Label>
             <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
             {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -125,12 +125,12 @@ export default function RegisterPage(): ReactElement {
           </div>
           {serverError ? <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{serverError}</p> : null}
           <Button className="w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating account..." : "Create account"}
+            {isSubmitting ? "Создаём..." : "Создать аккаунт"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Уже есть аккаунт?{" "}
             <Link className="font-medium text-foreground underline-offset-4 hover:underline" href="/login">
-              Sign in
+              Войти
             </Link>
           </p>
         </form>

@@ -1,238 +1,301 @@
 "use client";
 
-import { AlertCircle, ArrowUpRight, Package, ReceiptText, TrendingUp } from "lucide-react";
-import { useMemo, useState, type ReactElement } from "react";
+import Link from "next/link";
+import { useMemo, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  BarChart,
-  Bar,
-} from "recharts";
+  ArrowRight,
+  CalendarClock,
+  Clock3,
+  ReceiptText,
+  Sparkles,
+  TrendingUp,
+  TriangleAlert,
+} from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDashboardAnalytics } from "@/lib/analytics";
-import { analyticsPresets, formatCount, formatMoney, MetricCard, Panel, SectionBadge, SegmentControl } from "@/components/analytics/shared";
-import type { AnalyticsSeriesPoint, DashboardResponse } from "@/types/analytics";
+import { getAIRecognitions } from "@/lib/ai";
+import { getAuditLogs } from "@/lib/platform";
+import { getCurrentSession } from "@/lib/session";
+import { getDashboardAnalytics, getOrdersAnalytics } from "@/lib/analytics";
+import { formatCount, formatDate, formatMoney, Panel, MetricCard } from "@/components/platform/shared";
+import { quickActions } from "@/components/navigation/nav-config";
 
-function toChartData(points: AnalyticsSeriesPoint[]): Array<{ label: string; value: number }> {
-  return points.map((point) => ({ label: point.label.slice(5), value: Number(point.value) }));
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) {
+    return "Доброй ночи";
+  }
+  if (hour < 12) {
+    return "Доброе утро";
+  }
+  if (hour < 18) {
+    return "Добрый день";
+  }
+  return "Добрый вечер";
 }
 
-function emptyMessage(text: string): ReactElement {
-  return <div className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground">{text}</div>;
+function orderStatusLabel(status: string): string {
+  switch (status) {
+    case "draft":
+      return "Черновик";
+    case "confirmed":
+      return "Подтверждён";
+    case "completed":
+      return "Выполнен";
+    case "cancelled":
+      return "Отменён";
+    default:
+      return status;
+  }
+}
+
+function aiStatusLabel(status: string): string {
+  switch (status) {
+    case "completed":
+      return "Готово";
+    case "needs_review":
+      return "Требует проверки";
+    case "failed":
+      return "Ошибка";
+    case "converted":
+      return "Преобразовано";
+    default:
+      return status;
+  }
+}
+
+function actionLabel(action: string): string {
+  const dictionary: Record<string, string> = {
+    login: "Вход",
+    role_changed: "Роль изменена",
+    company_updated: "Компания обновлена",
+    plan_changed: "План изменён",
+    ai_request: "AI-запрос",
+    order_created: "Заказ создан",
+    product_updated: "Товар обновлён",
+  };
+  return dictionary[action] ?? action.replaceAll("_", " ");
 }
 
 export function DashboardClient(): ReactElement {
-  const [preset, setPreset] = useState<DashboardResponse["range"]["preset"]>("last_30_days");
+  const sessionQuery = useQuery({
+    queryKey: ["session-me-home"],
+    queryFn: getCurrentSession,
+  });
   const dashboardQuery = useQuery({
-    queryKey: ["dashboard", preset],
-    queryFn: () => getDashboardAnalytics({ preset }),
+    queryKey: ["dashboard-home", "today"],
+    queryFn: () => getDashboardAnalytics({ preset: "today" }),
+  });
+  const ordersQuery = useQuery({
+    queryKey: ["orders-home", "today"],
+    queryFn: () => getOrdersAnalytics({ preset: "today" }),
+  });
+  const aiQuery = useQuery({
+    queryKey: ["ai-home", "latest"],
+    queryFn: () => getAIRecognitions({ pageSize: 5 }),
+  });
+  const auditQuery = useQuery({
+    queryKey: ["audit-home", "latest"],
+    queryFn: () => getAuditLogs({ pageSize: 5 }),
   });
 
-  const data = dashboardQuery.data;
-  const revenueData = useMemo(() => (data ? toChartData(data.revenue_by_day) : []), [data]);
-  const ordersData = useMemo(() => (data ? toChartData(data.orders_by_day) : []), [data]);
+  const greeting = timeGreeting();
+  const personName = sessionQuery.data?.user.full_name ?? sessionQuery.data?.user.email ?? "Команда";
+
+  const quickCards = useMemo(
+    () =>
+      quickActions.map((item, index) => {
+        const Icon = item.icon;
+        const tone =
+          index === 0 ? "from-blue-500/20 to-sky-500/10" : index === 1 ? "from-emerald-500/20 to-lime-500/10" : "from-violet-500/20 to-fuchsia-500/10";
+        return (
+          <Link key={item.href} href={item.href} className="group">
+            <Card className="h-full overflow-hidden border-transparent bg-gradient-to-br shadow-soft transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+              <CardContent className={`flex h-full flex-col justify-between gap-6 bg-gradient-to-br p-6 ${tone}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-background/80 text-primary shadow-sm backdrop-blur">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-semibold tracking-tight">{item.label}</h2>
+                  <p className="max-w-xs text-sm text-muted-foreground">
+                    {item.href === "/orders/new"
+                      ? "Сразу перейти к созданию вручную или через AI-поток."
+                      : item.href === "/products/new"
+                        ? "Добавить товар в каталог и продолжить работу без задержек."
+                        : "Открыть рабочий сценарий без лишних переходов."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        );
+      }),
+    [],
+  );
+
+  const stats = dashboardQuery.data
+    ? [
+        { label: "Сегодня заказов", value: formatCount(dashboardQuery.data.metrics.today_orders), icon: ReceiptText },
+        { label: "Выручка за сегодня", value: formatMoney(dashboardQuery.data.metrics.today_revenue), icon: TrendingUp },
+        { label: "Средний чек", value: formatMoney(dashboardQuery.data.metrics.average_invoice), icon: Clock3 },
+        { label: "Товаров с низким остатком", value: formatCount(dashboardQuery.data.metrics.low_stock_products), icon: TriangleAlert },
+        { label: "Подтверждённые", value: formatCount(ordersQuery.data?.status_breakdown.confirmed_orders ?? 0), icon: CalendarClock },
+        { label: "Выполненные", value: formatCount(ordersQuery.data?.status_breakdown.completed_orders ?? 0), icon: Sparkles },
+      ]
+    : [];
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-2">
-            <SectionBadge>Dashboard</SectionBadge>
-            <h1 className="text-3xl font-semibold tracking-tight">Business overview</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              A fast snapshot of revenue, orders, products, and inventory across your company.
-            </p>
-          </div>
-          <ArrowUpRight className="hidden h-5 w-5 text-muted-foreground md:block" />
-        </div>
-        <SegmentControl value={preset} options={analyticsPresets} onChange={setPreset} />
-      </section>
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="overflow-hidden border-transparent bg-gradient-to-br from-primary/10 via-background to-background shadow-soft">
+          <CardContent className="flex h-full flex-col justify-between gap-8 p-6 sm:p-8">
+            <div className="space-y-4">
+              <Badge className="rounded-full bg-primary/10 px-3 py-1 text-primary">Kara Orders</Badge>
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">{greeting}, {personName} 👋</p>
+                <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
+                  Управляйте заказами, каталогом и аналитикой в одном чистом рабочем пространстве.
+                </h1>
+                <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
+                  Всё загружается из реального backend: заказы, товары, AI-распознавания, аудит и финансовая аналитика.
+                </p>
+              </div>
+            </div>
 
-      {dashboardQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 10 }, (_, index) => (
-            <Card key={index} className="h-28 animate-pulse bg-muted/40" />
-          ))}
-        </div>
-      ) : dashboardQuery.isError ? (
-        <Card>
-          <CardContent className="flex items-center gap-3 p-6 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            Could not load dashboard data. Please try again.
+            <div className="grid gap-3 sm:grid-cols-3">
+              {quickActions.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button key={item.href} asChild size="lg" className="h-16 justify-start rounded-3xl px-5">
+                    <Link href={item.href}>
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  </Button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
-      ) : data ? (
-        <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Today revenue" value={formatMoney(data.metrics.today_revenue)} />
-            <MetricCard label="This week revenue" value={formatMoney(data.metrics.week_revenue)} />
-            <MetricCard label="This month revenue" value={formatMoney(data.metrics.month_revenue)} />
-            <MetricCard label="Average invoice" value={formatMoney(data.metrics.average_invoice)} />
-            <MetricCard label="Today orders" value={formatCount(data.metrics.today_orders)} />
-            <MetricCard label="This week orders" value={formatCount(data.metrics.week_orders)} />
-            <MetricCard label="This month orders" value={formatCount(data.metrics.month_orders)} />
-            <MetricCard label="Total products" value={formatCount(data.metrics.total_products)} />
-            <MetricCard label="Low stock products" value={formatCount(data.metrics.low_stock_products)} />
-            <MetricCard label="Out of stock products" value={formatCount(data.metrics.out_of_stock_products)} />
-          </section>
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Revenue by day" description="Completed order revenue within the selected period.">
-              {revenueData.length > 0 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="dashboardRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} width={56} />
-                      <Tooltip formatter={(value) => formatMoney(String(value))} />
-                      <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#dashboardRevenue)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                emptyMessage("No revenue in this period yet.")
-              )}
-            </Panel>
-
-            <Panel title="Orders by day" description="All order statuses in the selected period.">
-              {ordersData.length > 0 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ordersData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                      <YAxis tickLine={false} axisLine={false} width={40} />
-                      <Tooltip formatter={(value) => formatCount(Number(value))} />
-                      <Bar dataKey="value" fill="hsl(var(--primary))" radius={[10, 10, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                emptyMessage("No orders in this period yet.")
-              )}
-            </Panel>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-3">
-            <Panel title="Top products" description="Most sold products by completed order volume.">
-              <div className="flex flex-col gap-3">
-                {data.top_products.slice(0, 5).map((product) => (
-                  <div key={`${product.product_name}-${product.sku ?? "sku"}`} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
-                    <div>
-                      <p className="font-medium">{product.product_name}</p>
-                      <p className="text-xs text-muted-foreground">{product.sku ?? "No SKU"}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{formatCount(Number(product.quantity_sold))} sold</p>
-                      <p className="text-xs text-muted-foreground">{formatMoney(product.revenue)} revenue</p>
-                    </div>
+        <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+          {stats.slice(0, 3).map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label} className="shadow-soft">
+                <CardContent className="flex items-center justify-between gap-4 p-5">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight">{stat.value}</p>
                   </div>
-                ))}
-              </div>
-            </Panel>
-
-            <Panel title="Top categories" description="Category performance for the selected period.">
-              <div className="flex flex-col gap-3">
-                {data.top_categories.slice(0, 5).map((category) => (
-                  <div key={category.category_name} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
-                    <div>
-                      <p className="font-medium">{category.category_name}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(category.product_count)} products</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{formatCount(Number(category.quantity_sold))} sold</p>
-                      <p className="text-xs text-muted-foreground">{formatMoney(category.revenue)} revenue</p>
-                    </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/60 text-primary">
+                    <Icon className="h-5 w-5" />
                   </div>
-                ))}
-              </div>
-            </Panel>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
 
-            <Panel title="Inventory summary" description="Live stock health across your catalog.">
-              <div className="grid gap-3">
-                <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Inventory value</span>
-                    </div>
-                    <span className="font-medium">{formatMoney(data.inventory_summary.inventory_value)}</span>
-                  </CardContent>
-                </Card>
-                <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Low stock</span>
-                    </div>
-                    <span className="font-medium">{formatCount(data.inventory_summary.low_stock_products)}</span>
-                  </CardContent>
-                </Card>
-                <Card className="border-dashed">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <ReceiptText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Out of stock</span>
-                    </div>
-                    <span className="font-medium">{formatCount(data.inventory_summary.out_of_stock_products)}</span>
-                  </CardContent>
-                </Card>
-              </div>
-            </Panel>
-          </section>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {quickCards}
+      </section>
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Recent orders" description="Latest orders across the selected period.">
-              <div className="flex flex-col gap-3">
-                {data.recent_orders.slice(0, 8).map((order) => (
-                  <div key={order.id} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
+      {dashboardQuery.data ? (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {stats.slice(3).map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <MetricCard
+                key={stat.label}
+                label={stat.label}
+                value={stat.value}
+                description={
+                  Icon === TriangleAlert
+                    ? "Следите за запасами до того, как товар закончится."
+                    : Icon === Sparkles
+                      ? "Показывает объём завершённых заказов за сегодня."
+                      : "Подтверждённые заказы в текущем дне."
+                }
+              />
+            );
+          })}
+        </section>
+      ) : null}
+
+      {dashboardQuery.data ? (
+        <section className="grid gap-6 xl:grid-cols-2">
+          <Panel title="Последние заказы" description="Свежее движение по заказам из API.">
+            <div className="flex flex-col gap-3">
+              {dashboardQuery.data.recent_orders.slice(0, 6).map((order) => (
+                <Link key={order.id} href={`/orders/${order.id}`} className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-medium">{order.customer_name ?? "Anonymous customer"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.invoice_number} • {new Date(order.created_at).toLocaleDateString()}
+                      <p className="font-medium">{order.customer_name ?? "Без клиента"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.invoice_number} • {formatDate(order.created_at)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{formatMoney(order.total)}</p>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{order.status}</p>
+                      <p className="font-medium">{formatMoney(order.total)}</p>
+                      <Badge variant="outline" className="mt-2">{orderStatusLabel(order.status)}</Badge>
                     </div>
                   </div>
-                ))}
-              </div>
-            </Panel>
+                </Link>
+              ))}
+            </div>
+          </Panel>
 
-            <Panel title="Top customers" description="Customers contributing the most revenue.">
-              <div className="flex flex-col gap-3">
-                {data.top_customers.slice(0, 8).map((customer) => (
-                  <div key={`${customer.customer_name}-${customer.customer_phone ?? "phone"}`} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
+          <Panel title="Последние действия AI" description="История распознаваний за последние записи.">
+            <div className="flex flex-col gap-3">
+              {aiQuery.data?.items.slice(0, 5).map((recognition) => (
+                <Link key={recognition.id} href={`/ai/review/${recognition.id}`} className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-medium">{customer.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">{customer.customer_phone ?? "No phone"}</p>
+                      <p className="font-medium capitalize">{recognition.input_type}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(recognition.created_at)} • {recognition.items.length} поз.
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{formatMoney(customer.revenue)}</p>
-                      <p className="text-xs text-muted-foreground">{formatCount(customer.order_count)} orders</p>
+                      <p className="font-medium">{aiStatusLabel(recognition.status)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {recognition.confidence ? `Уверенность ${Number(recognition.confidence).toFixed(2)}` : "Без оценки"}
+                      </p>
                     </div>
                   </div>
-                ))}
+                </Link>
+              ))}
+            </div>
+          </Panel>
+        </section>
+      ) : null}
+
+      {auditQuery.data ? (
+        <Panel title="Последняя активность" description="Аудит-лог компании и системные события.">
+          <div className="grid gap-3">
+            {auditQuery.data.items.map((entry) => (
+              <div key={entry.id} className="rounded-2xl border p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">{actionLabel(entry.action)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {entry.description ?? "—"} • {formatDate(entry.created_at)}
+                    </p>
+                  </div>
+                  <Badge variant="outline">{entry.resource_type ?? "system"}</Badge>
+                </div>
               </div>
-            </Panel>
-          </section>
-        </>
+            ))}
+          </div>
+        </Panel>
       ) : null}
     </div>
   );

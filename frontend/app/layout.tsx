@@ -6,8 +6,8 @@ import Providers from "@/app/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kara Orders",
-  description: "AI-assisted order and invoice foundation for small and medium businesses.",
+  title: "Kara Orders — управление заказами",
+  description: "Премиальная SaaS-платформа для заказов, товаров, аналитики и счетов.",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: ReactNode;
 }>): ReactElement {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>
