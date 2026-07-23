@@ -9,6 +9,7 @@ import {
   Clock3,
   ReceiptText,
   Sparkles,
+  Trash2,
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import { getCurrentSession } from "@/lib/session";
 import { getDashboardAnalytics, getOrdersAnalytics } from "@/lib/analytics";
 import { formatCount, formatDate, formatMoney, Panel, MetricCard } from "@/components/platform/shared";
 import { quickActions } from "@/components/navigation/nav-config";
+import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-statuses";
 
 function timeGreeting(): string {
   const hour = new Date().getHours();
@@ -35,21 +37,6 @@ function timeGreeting(): string {
     return "Добрый день";
   }
   return "Добрый вечер";
-}
-
-function orderStatusLabel(status: string): string {
-  switch (status) {
-    case "draft":
-      return "Черновик";
-    case "confirmed":
-      return "Подтверждён";
-    case "completed":
-      return "Выполнен";
-    case "cancelled":
-      return "Отменён";
-    default:
-      return status;
-  }
 }
 
 function aiStatusLabel(status: string): string {
@@ -139,14 +126,35 @@ export function DashboardClient(): ReactElement {
     [],
   );
 
-  const stats = dashboardQuery.data
+  const stats = dashboardQuery.data && ordersQuery.data
     ? [
         { label: "Сегодня заказов", value: formatCount(dashboardQuery.data.metrics.today_orders), icon: ReceiptText },
         { label: "Выручка за сегодня", value: formatMoney(dashboardQuery.data.metrics.today_revenue), icon: TrendingUp },
         { label: "Средний чек", value: formatMoney(dashboardQuery.data.metrics.average_invoice), icon: Clock3 },
-        { label: "Товаров с низким остатком", value: formatCount(dashboardQuery.data.metrics.low_stock_products), icon: TriangleAlert },
-        { label: "Подтверждённые", value: formatCount(ordersQuery.data?.status_breakdown.confirmed_orders ?? 0), icon: CalendarClock },
-        { label: "Выполненные", value: formatCount(ordersQuery.data?.status_breakdown.completed_orders ?? 0), icon: Sparkles },
+        {
+          label: "Товаров с низким остатком",
+          value: formatCount(dashboardQuery.data.metrics.low_stock_products),
+          icon: TriangleAlert,
+          description: "Следите за запасами до того, как товар закончится.",
+        },
+        {
+          label: "Новые",
+          value: formatCount(ordersQuery.data.status_breakdown.new_orders),
+          icon: CalendarClock,
+          description: "Новые заказы в текущем периоде.",
+        },
+        {
+          label: "Подтвержденные",
+          value: formatCount(ordersQuery.data.status_breakdown.confirmed_orders),
+          icon: Sparkles,
+          description: "Подтвержденные заказы в текущем периоде.",
+        },
+        {
+          label: "Удаленные",
+          value: formatCount(ordersQuery.data.status_breakdown.deleted_orders),
+          icon: Trash2,
+          description: "Удаленные заказы в текущем периоде.",
+        },
       ]
     : [];
 
@@ -211,19 +219,12 @@ export function DashboardClient(): ReactElement {
       {dashboardQuery.data ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {stats.slice(3).map((stat) => {
-            const Icon = stat.icon;
             return (
               <MetricCard
                 key={stat.label}
                 label={stat.label}
                 value={stat.value}
-                description={
-                  Icon === TriangleAlert
-                    ? "Следите за запасами до того, как товар закончится."
-                    : Icon === Sparkles
-                      ? "Показывает объём завершённых заказов за сегодня."
-                      : "Подтверждённые заказы в текущем дне."
-                }
+                description={stat.description}
               />
             );
           })}
@@ -245,7 +246,9 @@ export function DashboardClient(): ReactElement {
                     </div>
                     <div className="text-right">
                       <p className="font-medium">{formatMoney(order.total)}</p>
-                      <Badge variant="outline" className="mt-2">{orderStatusLabel(order.status)}</Badge>
+                      <Badge variant={orderStatusBadgeVariant(order.status)} className="mt-2">
+                        {orderStatusLabel(order.status)}
+                      </Badge>
                     </div>
                   </div>
                 </Link>

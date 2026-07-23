@@ -9,6 +9,7 @@ from sqlalchemy import CheckConstraint, ForeignKey, Index, Numeric, String, Uniq
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.order_statuses import ORDER_STATUS_NEW, ORDER_STATUSES
 from app.db.base import Base
 from app.db.models.mixins import CompanyScopedMixin, SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -31,7 +32,7 @@ class Order(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, CompanyS
             name="input_method_valid",
         ),
         CheckConstraint(
-            "status in ('draft', 'confirmed', 'completed', 'cancelled')",
+            f"status in {ORDER_STATUSES}",
             name="status_valid",
         ),
         Index("ix_orders_company_created_at", "company_id", "created_at"),
@@ -50,8 +51,8 @@ class Order(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, CompanyS
     status: Mapped[str] = mapped_column(
         String(16),
         nullable=False,
-        default="draft",
-        server_default=sa.text("'draft'"),
+        default=ORDER_STATUS_NEW,
+        server_default=sa.text(f"'{ORDER_STATUS_NEW}'"),
     )
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.order_statuses import OrderStatus, ORDER_STATUS_NEW
 from app.schemas.product import ProductRead
 
 
@@ -37,7 +37,7 @@ class OrderCreateRequest(BaseModel):
     customer_phone: str | None = Field(default=None, max_length=32)
     customer_address: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=1000)
-    status: Literal["draft", "confirmed", "completed", "cancelled"] = "draft"
+    status: OrderStatus = ORDER_STATUS_NEW
     items: list[OrderItemWrite] = Field(min_length=1)
 
 
@@ -46,7 +46,7 @@ class OrderUpdateRequest(BaseModel):
     customer_phone: str | None = Field(default=None, max_length=32)
     customer_address: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=1000)
-    status: Literal["draft", "confirmed", "completed", "cancelled"] | None = None
+    status: OrderStatus | None = None
     items: list[OrderItemWrite] | None = None
 
 
@@ -61,7 +61,7 @@ class OrderRead(BaseModel):
     customer_address: str | None = None
     notes: str | None = None
     input_method: str
-    status: str
+    status: OrderStatus
     subtotal: Decimal
     discount_total: Decimal
     tax_total: Decimal

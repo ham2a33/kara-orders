@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import Role
 from app.core.config import Settings
+from app.core.order_statuses import OrderStatus
 from app.dependencies.auth import get_current_user, require_roles
 from app.dependencies.deps import get_app_settings, get_db
 from app.db.models.user import User
@@ -33,7 +34,7 @@ def list_orders(
     page: int = 1,
     page_size: int = 20,
     search: str | None = None,
-    status: str | None = None,
+    status: OrderStatus | None = None,
     include_deleted: bool = False,
     sort_by: Literal["created_at", "updated_at", "invoice_number", "customer_name", "status", "total"] = "created_at",
     sort_dir: Literal["asc", "desc"] = "desc",

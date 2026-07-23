@@ -14,6 +14,7 @@ import { formatCount, formatMoney } from "@/components/platform/shared";
 import { createOrder } from "@/lib/orders";
 import { getProducts } from "@/lib/products";
 import { extractErrorMessage } from "@/lib/errors";
+import type { OrderStatus } from "@/types/orders";
 import type { Product } from "@/types/products";
 
 type OrderLine = {
@@ -52,6 +53,7 @@ export default function NewOrderPage(): ReactElement {
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [orderTitle, setOrderTitle] = useState("");
+  const [status, setStatus] = useState<OrderStatus>("new");
   const [searchValue, setSearchValue] = useState("");
   const [clientOpen, setClientOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -141,6 +143,19 @@ export default function NewOrderPage(): ReactElement {
               placeholder="Название заказа (необязательно)"
               className="h-12 rounded-2xl"
             />
+          </div>
+          <div className="max-w-xl space-y-2">
+            <Label htmlFor="order-status">Статус</Label>
+            <select
+              id="order-status"
+              className="flex h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              value={status}
+              onChange={(event) => setStatus(event.target.value as OrderStatus)}
+            >
+              <option value="new">Новый</option>
+              <option value="confirmed">Подтвержден</option>
+              <option value="deleted">Удален</option>
+            </select>
           </div>
         </div>
 
@@ -379,8 +394,9 @@ export default function NewOrderPage(): ReactElement {
                     customer_name: customerName.trim() || null,
                     customer_phone: customerPhone.trim() || null,
                     customer_address: customerAddress.trim() || null,
-                    notes: orderTitle.trim() || null,
-                    items: items.map((item) => ({
+	                    notes: orderTitle.trim() || null,
+	                    status,
+	                    items: items.map((item) => ({
                       product_id: item.product.id,
                       quantity: item.quantity,
                       discount_amount: 0,
@@ -428,8 +444,9 @@ export default function NewOrderPage(): ReactElement {
                   customer_name: customerName.trim() || null,
                   customer_phone: customerPhone.trim() || null,
                   customer_address: customerAddress.trim() || null,
-                  notes: orderTitle.trim() || null,
-                  items: items.map((item) => ({
+	                  notes: orderTitle.trim() || null,
+	                  status,
+	                  items: items.map((item) => ({
                     product_id: item.product.id,
                     quantity: item.quantity,
                     discount_amount: 0,

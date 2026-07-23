@@ -40,10 +40,9 @@ class DashboardMetricsRead(BaseModel):
 
 
 class AnalyticsStatusBreakdownRead(BaseModel):
-    draft_orders: int
+    new_orders: int
     confirmed_orders: int
-    completed_orders: int
-    cancelled_orders: int
+    deleted_orders: int
     average_order_value: Decimal
     largest_order: Decimal
 
@@ -137,4 +136,3 @@ class AnalyticsExportRequest(BaseModel):
     preset: AnalyticsPreset = "last_30_days"
     start_date: date | None = None
     end_date: date | None = None
-

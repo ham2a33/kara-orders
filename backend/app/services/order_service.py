@@ -11,6 +11,7 @@ from starlette.responses import StreamingResponse
 
 from app.core.config import Settings
 from app.core.exceptions import NotFoundError, ValidationAppError
+from app.core.order_statuses import ORDER_STATUS_DELETED, ORDER_STATUS_NEW, ORDER_STATUSES
 from app.db.models.company import Company
 from app.db.models.order import Order
 from app.db.models.order_item import OrderItem
@@ -74,8 +75,6 @@ class OrderService:
             .where(Order.company_id == company_id)
             .options(selectinload(Order.items).selectinload(OrderItem.product))
         )
-        if not include_deleted:
-            statement = statement.where(Order.deleted_at.is_(None))
         if status:
             statement = statement.where(Order.status == status)
         if search and search.strip():
@@ -187,7 +186,7 @@ class OrderService:
     def delete_order(self, company_id: UUID, order_id: UUID) -> None:
         order = self._get_order_or_404(company_id, order_id)
         order.deleted_at = sa.func.now()
-        order.status = "cancelled"
+        order.status = ORDER_STATUS_DELETED
         self.session.commit()
         PlatformService(self.session).log_action(
             action="order_deleted",
@@ -201,6 +200,7 @@ class OrderService:
     def restore_order(self, company_id: UUID, order_id: UUID) -> OrderRestoreResponse:
         order = self._get_order_or_404(company_id, order_id, include_deleted=True)
         order.deleted_at = None
+        order.status = ORDER_STATUS_NEW
         self.session.commit()
         PlatformService(self.session).log_action(
             action="order_restored",
@@ -214,13 +214,13 @@ class OrderService:
 
     def preview_invoice(self, company_id: UUID, order_id: UUID) -> InvoicePreviewResponse:
         order = self.orders.get_with_items(order_id, company_id)
-        if order is None or order.deleted_at is not None:
+        if order is None:
             raise NotFoundError("Order not found")
         return InvoicePreviewResponse(order=self._serialize_order(order), company_name=order.company.name)
 
     def generate_invoice_pdf(self, company_id: UUID, order_id: UUID) -> StreamingResponse:
         order = self.orders.get_with_items(order_id, company_id)
-        if order is None or order.deleted_at is not None:
+        if order is None:
             raise NotFoundError("Order not found")
         pdf_bytes = self.invoice_service.generate_pdf(order.company, order)
         filename = f"invoice-{order.invoice_number}.pdf"
@@ -232,8 +232,6 @@ class OrderService:
 
     def _get_order_or_404(self, company_id: UUID, order_id: UUID, include_deleted: bool = False) -> Order:
         statement = select(Order).where(Order.company_id == company_id, Order.id == order_id)
-        if not include_deleted:
-            statement = statement.where(Order.deleted_at.is_(None))
         order = self.session.scalar(statement.options(selectinload(Order.items).selectinload(OrderItem.product)))
         if order is None:
             raise NotFoundError("Order not found")
@@ -361,7 +359,7 @@ class OrderService:
         )
 
     def _validate_status(self, status: str) -> None:
-        if status not in {"draft", "confirmed", "completed", "cancelled"}:
+        if status not in ORDER_STATUSES:
             raise ValidationAppError("Invalid order status")
 
     def _quantize(self, value: Decimal) -> Decimal:

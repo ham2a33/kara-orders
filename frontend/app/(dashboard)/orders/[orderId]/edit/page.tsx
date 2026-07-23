@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { extractErrorMessage } from "@/lib/errors";
 import { getOrder, updateOrder } from "@/lib/orders";
+import { ORDER_STATUS_OPTIONS } from "@/lib/order-statuses";
+import type { OrderStatus } from "@/types/orders";
 
 type DraftItem = {
   product_id: string;
@@ -35,7 +37,7 @@ export default function OrderEditPage(): ReactElement {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<"draft" | "confirmed" | "completed" | "cancelled">("draft");
+  const [status, setStatus] = useState<OrderStatus>("new");
   const [items, setItems] = useState<DraftItem[]>([]);
 
   useEffect(() => {
@@ -122,10 +124,11 @@ export default function OrderEditPage(): ReactElement {
               value={status}
               onChange={(event) => setStatus(event.target.value as typeof status)}
             >
-              <option value="draft">Черновик</option>
-              <option value="confirmed">Подтверждён</option>
-              <option value="completed">Выполнен</option>
-              <option value="cancelled">Отменён</option>
+              {ORDER_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-2 md:col-span-2">

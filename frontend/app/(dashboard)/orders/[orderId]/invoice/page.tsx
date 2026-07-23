@@ -12,6 +12,7 @@ import { apiDownload } from "@/lib/api-client";
 import { getInvoicePreview } from "@/lib/orders";
 import { formatMoney } from "@/components/platform/shared";
 import { extractErrorMessage } from "@/lib/errors";
+import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-statuses";
 
 export default function OrderInvoicePage(): ReactElement {
   const params = useParams<{ orderId: string }>();
@@ -79,7 +80,9 @@ export default function OrderInvoicePage(): ReactElement {
                     Дата: {order ? new Date(order.created_at).toLocaleDateString("ru-RU") : "—"}
                   </p>
                 </div>
-                <Badge variant="success">{order?.status ?? "Готово"}</Badge>
+                <Badge variant={order ? orderStatusBadgeVariant(order.status) : "success"}>
+                  {order ? orderStatusLabel(order.status) : "Готово"}
+                </Badge>
               </div>
               <div className="grid gap-6 md:grid-cols-2">
                 <div>

@@ -1,11 +1,11 @@
 import { apiClient } from "@/lib/api-client";
-import type { InvoicePreview, Order, OrderCreatePayload, OrderListResponse, OrderUpdatePayload } from "@/types/orders";
+import type { InvoicePreview, Order, OrderCreatePayload, OrderListResponse, OrderStatus, OrderUpdatePayload } from "@/types/orders";
 
 type OrderQuery = {
   page?: number;
   pageSize?: number;
   search?: string;
-  status?: string;
+  status?: OrderStatus;
   includeDeleted?: boolean;
   sortBy?: string;
   sortDir?: "asc" | "desc";

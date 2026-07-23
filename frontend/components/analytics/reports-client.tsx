@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { downloadAnalyticsExport, getDashboardAnalytics } from "@/lib/analytics";
+import { orderStatusLabel } from "@/lib/order-statuses";
 import { analyticsPresets, formatCount, formatMoney, MetricCard, Panel, SectionBadge, SegmentControl } from "@/components/analytics/shared";
 import type { AnalyticsPreset } from "@/types/analytics";
 
@@ -165,7 +166,7 @@ export function ReportsClient(): ReactElement {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(order.total)}</p>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{order.status}</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{orderStatusLabel(order.status)}</p>
                     </div>
                   </div>
                 ))}

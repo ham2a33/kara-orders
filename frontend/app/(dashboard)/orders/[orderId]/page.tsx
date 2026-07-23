@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { deleteOrder, getOrder, restoreOrder } from "@/lib/orders";
 import { extractErrorMessage } from "@/lib/errors";
 import { formatDate, formatMoney } from "@/components/platform/shared";
+import { orderStatusLabel } from "@/lib/order-statuses";
 
 export default function OrderDetailsPage(): ReactElement {
   const params = useParams<{ orderId: string }>();
@@ -44,7 +45,7 @@ export default function OrderDetailsPage(): ReactElement {
   const items = order?.items ?? [];
   const metrics = useMemo(
     () => [
-      { label: "Статус", value: order?.status ?? "—" },
+      { label: "Статус", value: order ? orderStatusLabel(order.status) : "—" },
       { label: "Промежуточная сумма", value: formatMoney(order?.subtotal ?? "0") },
       { label: "Налог", value: formatMoney(order?.tax_total ?? "0") },
       { label: "Итого", value: formatMoney(order?.total ?? "0") },
@@ -94,13 +95,13 @@ export default function OrderDetailsPage(): ReactElement {
 
       <section className="grid gap-4 md:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label}>
-            <CardHeader>
-              <CardDescription>{metric.label}</CardDescription>
-              <CardTitle className="text-3xl">{metric.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
+            <Card key={metric.label}>
+              <CardHeader>
+                <CardDescription>{metric.label}</CardDescription>
+                <CardTitle className="text-3xl">{metric.value}</CardTitle>
+              </CardHeader>
+            </Card>
+          ))}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">

@@ -2,46 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCount, formatDate, formatMoney, MetricCard, Panel } from "@/components/platform/shared";
-import { getOrders } from "@/lib/orders";
-
-function orderStatusLabel(status: string): string {
-  switch (status) {
-    case "draft":
-      return "Черновик";
-    case "confirmed":
-      return "Подтверждён";
-    case "completed":
-      return "Выполнен";
-    case "cancelled":
-      return "Отменён";
-    default:
-      return status;
-  }
-}
-
-function orderBadgeVariant(status: string): "default" | "outline" | "success" | "warning" | "danger" {
-  if (status === "completed") {
-    return "success";
-  }
-  if (status === "confirmed") {
-    return "warning";
-  }
-  if (status === "cancelled") {
-    return "danger";
-  }
-  return "outline";
-}
+import { getOrders, updateOrder } from "@/lib/orders";
+import { ORDER_STATUS_OPTIONS } from "@/lib/order-statuses";
+import type { OrderStatus } from "@/types/orders";
 
 export default function OrdersPage(): ReactElement {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<OrderStatus | "">("");
   const [sortBy, setSortBy] = useState("created_at");
+  const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -56,17 +32,36 @@ export default function OrdersPage(): ReactElement {
       getOrders({
         search: search || undefined,
         status: status || undefined,
+        includeDeleted: true,
         sortBy,
       }),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ orderId, nextStatus }: { orderId: string; nextStatus: (typeof ORDER_STATUS_OPTIONS)[number]["value"] }) =>
+      updateOrder(orderId, { status: nextStatus }),
+    onMutate: ({ orderId }) => {
+      setSavingOrderId(orderId);
+    },
+    onSettled: async () => {
+      setSavingOrderId(null);
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["order"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-home"] });
+      await queryClient.invalidateQueries({ queryKey: ["analytics-orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["analytics-revenue"] });
+      await queryClient.invalidateQueries({ queryKey: ["analytics-products"] });
+      await queryClient.invalidateQueries({ queryKey: ["analytics-customers"] });
+      await queryClient.invalidateQueries({ queryKey: ["reports-dashboard"] });
+    },
   });
 
   const orders = useMemo(() => ordersQuery.data?.items ?? [], [ordersQuery.data?.items]);
   const stats = useMemo(
     () => [
-      { label: "Черновики", value: formatCount(orders.filter((order) => order.status === "draft").length) },
-      { label: "Подтверждены", value: formatCount(orders.filter((order) => order.status === "confirmed").length) },
-      { label: "Выполнены", value: formatCount(orders.filter((order) => order.status === "completed").length) },
-      { label: "Отменены", value: formatCount(orders.filter((order) => order.status === "cancelled").length) },
+      { label: "Новые", value: formatCount(orders.filter((order) => order.status === "new").length) },
+      { label: "Подтвержденные", value: formatCount(orders.filter((order) => order.status === "confirmed").length) },
+      { label: "Удаленные", value: formatCount(orders.filter((order) => order.status === "deleted").length) },
     ],
     [orders],
   );
@@ -109,13 +104,14 @@ export default function OrdersPage(): ReactElement {
           <select
             className="h-11 rounded-2xl border bg-background px-3 text-sm"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => setStatus(event.target.value as OrderStatus | "")}
           >
             <option value="">Все статусы</option>
-            <option value="draft">Черновик</option>
-            <option value="confirmed">Подтверждён</option>
-            <option value="completed">Выполнен</option>
-            <option value="cancelled">Отменён</option>
+            {ORDER_STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <select
             className="h-11 rounded-2xl border bg-background px-3 text-sm"
@@ -132,19 +128,35 @@ export default function OrdersPage(): ReactElement {
 
         <div className="mt-6 grid gap-3 md:hidden">
           {orders.map((order) => (
-            <Link key={order.id} href={`/orders/${order.id}`} className="rounded-3xl border p-4 transition-colors hover:bg-muted/40">
+            <div key={order.id} className="rounded-3xl border p-4">
               <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
+                <Link href={`/orders/${order.id}`} className="space-y-1">
                   <p className="text-sm font-medium">{order.invoice_number}</p>
                   <p className="text-sm text-muted-foreground">{order.customer_name ?? "Без клиента"}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
-                </div>
+                </Link>
                 <div className="text-right">
-                  <Badge variant={orderBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
+                  <select
+                    className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                    value={order.status}
+                    disabled={savingOrderId === order.id}
+                    onChange={(event) =>
+                      statusMutation.mutate({
+                        orderId: order.id,
+                        nextStatus: event.target.value as (typeof ORDER_STATUS_OPTIONS)[number]["value"],
+                      })
+                    }
+                  >
+                    {ORDER_STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                   <p className="mt-2 text-sm font-medium">{formatMoney(order.total)}</p>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
 
@@ -169,7 +181,23 @@ export default function OrdersPage(): ReactElement {
                   </td>
                   <td className="py-4 pr-4 text-muted-foreground">{order.customer_name ?? "—"}</td>
                   <td className="py-4 pr-4">
-                    <Badge variant={orderBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
+                    <select
+                      className="h-10 rounded-2xl border bg-background px-3 text-sm"
+                      value={order.status}
+                      disabled={savingOrderId === order.id}
+                      onChange={(event) =>
+                        statusMutation.mutate({
+                          orderId: order.id,
+                          nextStatus: event.target.value as (typeof ORDER_STATUS_OPTIONS)[number]["value"],
+                        })
+                      }
+                    >
+                      {ORDER_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="py-4 pr-4 text-muted-foreground">{formatMoney(order.total)}</td>
                   <td className="py-4 text-muted-foreground">{formatDate(order.created_at)}</td>

@@ -1,4 +1,4 @@
-export type OrderStatus = "draft" | "confirmed" | "completed" | "cancelled";
+export type OrderStatus = "new" | "confirmed" | "deleted";
 
 export type OrderItem = {
   id: string;

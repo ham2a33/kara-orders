@@ -35,10 +35,9 @@ export type DashboardMetrics = {
 };
 
 export type AnalyticsStatusBreakdown = {
-  draft_orders: number;
+  new_orders: number;
   confirmed_orders: number;
-  completed_orders: number;
-  cancelled_orders: number;
+  deleted_orders: number;
   average_order_value: string;
   largest_order: string;
 };
@@ -124,4 +123,3 @@ export type CustomersAnalyticsResponse = {
   top_customers: TopCustomer[];
   recent_orders: RecentOrder[];
 };
-

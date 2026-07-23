@@ -22,6 +22,7 @@ from xlsxwriter import Workbook
 
 from app.core.config import Settings
 from app.core.exceptions import NotFoundError, ValidationAppError
+from app.core.order_statuses import ORDER_STATUS_CONFIRMED, ORDER_STATUS_DELETED, ORDER_STATUS_NEW
 from app.db.models.company import Company
 from app.db.models.order import Order
 from app.db.models.order_item import OrderItem
@@ -269,8 +270,7 @@ class AnalyticsService:
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -287,8 +287,7 @@ class AnalyticsService:
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -305,7 +304,7 @@ class AnalyticsService:
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
+                Order.status.in_((ORDER_STATUS_NEW, ORDER_STATUS_CONFIRMED)),
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -322,7 +321,7 @@ class AnalyticsService:
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
+                Order.status.in_((ORDER_STATUS_NEW, ORDER_STATUS_CONFIRMED)),
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -334,25 +333,22 @@ class AnalyticsService:
     def _orders_status_breakdown(self, company_id: UUID, window: AnalyticsWindow) -> AnalyticsStatusBreakdownRead:
         rows = self.session.execute(
             select(
-                func.count().filter(Order.status == "draft"),
-                func.count().filter(Order.status == "confirmed"),
-                func.count().filter(Order.status == "completed"),
-                func.count().filter(Order.status == "cancelled"),
-                func.coalesce(func.avg(case((Order.status == "completed", Order.total), else_=None)), 0),
-                func.coalesce(func.max(Order.total), 0),
+                func.count().filter(Order.status == ORDER_STATUS_NEW),
+                func.count().filter(Order.status == ORDER_STATUS_CONFIRMED),
+                func.count().filter(Order.status == ORDER_STATUS_DELETED),
+                func.coalesce(func.avg(case((Order.status == ORDER_STATUS_CONFIRMED, Order.total), else_=None)), 0),
+                func.coalesce(func.max(case((Order.status == ORDER_STATUS_CONFIRMED, Order.total), else_=None)), 0),
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
         ).one()
         return AnalyticsStatusBreakdownRead(
-            draft_orders=int(rows[0] or 0),
+            new_orders=int(rows[0] or 0),
             confirmed_orders=int(rows[1] or 0),
-            completed_orders=int(rows[2] or 0),
-            cancelled_orders=int(rows[3] or 0),
+            deleted_orders=int(rows[2] or 0),
             average_order_value=self._decimal(rows[4]),
             largest_order=self._decimal(rows[5]),
         )
@@ -368,7 +364,6 @@ class AnalyticsService:
             select(Order)
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -410,8 +405,7 @@ class AnalyticsService:
             .outerjoin(Product, Product.id == OrderItem.product_id)
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -452,8 +446,7 @@ class AnalyticsService:
             .outerjoin(ProductCategory, ProductCategory.id == Product.category_id)
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -488,8 +481,7 @@ class AnalyticsService:
             )
             .where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -531,8 +523,7 @@ class AnalyticsService:
         value = self.session.scalar(
             select(func.coalesce(func.sum(Order.total), 0)).where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -543,7 +534,7 @@ class AnalyticsService:
         value = self.session.scalar(
             select(func.count(Order.id)).where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
+                Order.status.in_((ORDER_STATUS_NEW, ORDER_STATUS_CONFIRMED)),
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )
@@ -554,8 +545,7 @@ class AnalyticsService:
         value = self.session.scalar(
             select(func.coalesce(func.avg(Order.total), 0)).where(
                 Order.company_id == company_id,
-                Order.deleted_at.is_(None),
-                Order.status == "completed",
+                Order.status == ORDER_STATUS_CONFIRMED,
                 Order.created_at >= window.start_at,
                 Order.created_at < window.end_at,
             )

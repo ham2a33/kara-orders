@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { orderStatusLabel } from "@/lib/order-statuses";
 import {
   downloadAnalyticsExport,
   getCustomersAnalytics,
@@ -211,14 +212,14 @@ export function AnalyticsClient(): ReactElement {
       ) : revenueQuery.data && ordersQuery.data && productsQuery.data && customersQuery.data ? (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Выполненные заказы" value={formatCount(ordersQuery.data.status_breakdown.completed_orders)} />
-            <MetricCard label="Отменённые заказы" value={formatCount(ordersQuery.data.status_breakdown.cancelled_orders)} />
-            <MetricCard label="Черновики заказов" value={formatCount(ordersQuery.data.status_breakdown.draft_orders)} />
+            <MetricCard label="Новые заказы" value={formatCount(ordersQuery.data.status_breakdown.new_orders)} />
+            <MetricCard label="Подтвержденные заказы" value={formatCount(ordersQuery.data.status_breakdown.confirmed_orders)} />
+            <MetricCard label="Удаленные заказы" value={formatCount(ordersQuery.data.status_breakdown.deleted_orders)} />
             <MetricCard label="Средний чек заказа" value={formatMoney(ordersQuery.data.status_breakdown.average_order_value)} />
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Выручка по дням" description="Выручка по завершённым заказам за выбранный период.">
+            <Panel title="Выручка по дням" description="Выручка по подтвержденным заказам за выбранный период.">
               {revenueDaily.length > 0 ? (
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
@@ -368,7 +369,7 @@ export function AnalyticsClient(): ReactElement {
           </section>
 
           <section className="grid gap-6 xl:grid-cols-2">
-            <Panel title="Топ клиентов" description="Клиенты по выручке от завершённых заказов.">
+            <Panel title="Топ клиентов" description="Клиенты по выручке от подтвержденных заказов.">
               <div className="flex flex-col gap-3">
                 {customersQuery.data.top_customers.slice(0, 8).map((customer) => (
                   <div key={`${customer.customer_name}-${customer.customer_phone ?? "phone"}`} className="flex items-center justify-between gap-4 rounded-2xl border p-4">
@@ -395,7 +396,7 @@ export function AnalyticsClient(): ReactElement {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(order.total)}</p>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{order.status}</p>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{orderStatusLabel(order.status)}</p>
                     </div>
                   </div>
                 ))}
