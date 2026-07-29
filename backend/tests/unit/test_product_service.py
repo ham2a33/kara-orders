@@ -11,6 +11,7 @@ from app.db.models.product import Product
 from app.db.models.user import User
 from app.schemas.product import (
     ProductCategoryCreateRequest,
+    ProductCreateRequest,
     ProductInventoryTransactionCreateRequest,
 )
 from app.services.product_service import ProductService
@@ -117,3 +118,20 @@ def test_product_service_category_tree(db_session) -> None:
     assert categories.items[0].slug == "plumbing"
     assert categories.items[0].children[0].slug == "pipes"
     assert categories.items[0].children[0].product_count == 1
+
+
+def test_product_service_auto_generates_sku(db_session) -> None:
+    company, _ = _create_company_and_user(db_session)
+    service = _build_service(db_session)
+
+    first = service.create_product(
+        company.id,
+        ProductCreateRequest(name="Pipe PVC - 20 mm", price=Decimal("1250.00")),
+    )
+    second = service.create_product(
+        company.id,
+        ProductCreateRequest(name="Pipe PVC", price=Decimal("900.00")),
+    )
+
+    assert first.sku == "SKU-000001"
+    assert second.sku == "SKU-000002"

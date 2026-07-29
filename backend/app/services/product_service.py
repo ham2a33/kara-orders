@@ -133,7 +133,8 @@ class ProductService:
             select(func.count(Product.id)).where(Product.company_id == company_id, Product.deleted_at.is_(None))
         ) or 0
         platform.ensure_limit(company_id, "maximum_products", 1, current=int(current_products))
-        self._validate_unique_product_fields(company_id, sku=payload.sku, barcode=payload.barcode)
+        sku = payload.sku or self._generate_sku(company_id)
+        self._validate_unique_product_fields(company_id, sku=sku, barcode=payload.barcode)
         category = self._resolve_category(company_id, payload.category_id, payload.category)
 
         product = Product(
@@ -142,7 +143,7 @@ class ProductService:
             category=category.name if category else payload.category,
             name=payload.name,
             manufacturer=payload.manufacturer,
-            sku=payload.sku,
+            sku=sku,
             barcode=payload.barcode,
             aliases=payload.aliases,
             unit=payload.unit,
@@ -166,9 +167,25 @@ class ProductService:
             resource_type="product",
             resource_id=str(product.id),
             description="Product created",
-            metadata={"name": payload.name, "sku": payload.sku},
+            metadata={"name": payload.name, "sku": sku},
         )
         return self.get_product(company_id, product.id)
+
+    def _generate_sku(self, company_id: UUID) -> str:
+        existing_skus = self.session.scalars(
+            select(Product.sku).where(
+                Product.company_id == company_id,
+                Product.sku.like("SKU-%"),
+            )
+        ).all()
+        max_num = 0
+        for existing_sku in existing_skus:
+            if existing_sku and existing_sku.startswith("SKU-"):
+                try:
+                    max_num = max(max_num, int(existing_sku[4:]))
+                except ValueError:
+                    continue
+        return f"SKU-{max_num + 1:06d}"
 
     def update_product(self, company_id: UUID, product_id: UUID, payload: ProductUpdateRequest) -> ProductRead:
         product = self._get_product_or_404(company_id, product_id)

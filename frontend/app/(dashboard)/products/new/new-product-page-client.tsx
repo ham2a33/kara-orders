@@ -15,36 +15,20 @@ import { extractErrorMessage } from "@/lib/errors";
 
 type FormState = {
   name: string;
-  manufacturer: string;
-  sku: string;
-  barcode: string;
-  category: string;
-  unit: string;
-  currency: string;
+  size: string;
   price: string;
-  cost: string;
-  tax_rate: string;
-  stock_qty: string;
-  low_stock_threshold: string;
-  is_active: boolean;
+  manufacturer: string;
+  category: string;
 };
 
-const mainFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: string; span?: boolean }> = [
-  { id: "name", label: "Название товара", span: true },
-  { id: "manufacturer", label: "Производитель", span: true },
-  { id: "sku", label: "SKU" },
-  { id: "barcode", label: "Штрихкод" },
-  { id: "category", label: "Категория" },
-  { id: "unit", label: "Единица" },
-  { id: "price", label: "Цена продажи" },
-  { id: "cost", label: "Себестоимость" },
-  { id: "tax_rate", label: "Налог" },
-];
-
-const inventoryFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: string }> = [
-  { id: "stock_qty", label: "Начальный остаток" },
-  { id: "low_stock_threshold", label: "Порог низкого остатка" },
-];
+function buildProductName(name: string, size: string): string {
+  const trimmedName = name.trim();
+  const trimmedSize = size.trim();
+  if (trimmedSize) {
+    return `${trimmedName} - ${trimmedSize} mm`;
+  }
+  return trimmedName;
+}
 
 export function NewProductPageClient(): ReactElement {
   const router = useRouter();
@@ -60,18 +44,10 @@ export function NewProductPageClient(): ReactElement {
   const prefilledNameRef = useRef(false);
   const [formState, setFormState] = useState<FormState>({
     name: "",
-    manufacturer: "",
-    sku: "",
-    barcode: "",
-    category: "",
-    unit: "pcs",
-    currency: "KZT",
+    size: "",
     price: "",
-    cost: "",
-    tax_rate: "",
-    stock_qty: "",
-    low_stock_threshold: "",
-    is_active: true,
+    manufacturer: "",
+    category: "",
   });
 
   useEffect(() => {
@@ -100,98 +76,115 @@ export function NewProductPageClient(): ReactElement {
     },
   });
 
+  const canSubmit = formState.name.trim().length > 0 && formState.price.trim().length > 0;
+  const previewName = buildProductName(formState.name, formState.size);
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-xl space-y-6">
       <section className="space-y-3">
-        <Badge>Редактор товара</Badge>
+        <Badge>Новый товар</Badge>
         <h1 className="text-3xl font-semibold tracking-tight">Создание товара</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Структурированный ввод товара: SKU, штрихкод, цены, категории, теги и остатки.
-        </p>
+        <p className="text-muted-foreground">Заполните основные поля — SKU создаётся автоматически.</p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Данные товара</CardTitle>
-            <CardDescription>Оптимизировано для быстрого ввода на складе или в офисе.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            {mainFields.map((field) => (
-              <div key={field.id} className={`space-y-2 ${field.span ? "md:col-span-2" : ""}`}>
-                <Label htmlFor={field.id}>{field.label}</Label>
-                <Input
-                  id={field.id}
-                  value={String(formState[field.id])}
-                  onChange={(event) => setFormState((current) => ({ ...current, [field.id]: event.target.value }))}
-                />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Данные товара</CardTitle>
+          <CardDescription>Название, цена и необязательные параметры.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">
+              Название товара <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="name"
+              autoFocus
+              placeholder="Pipe PVC"
+              value={formState.name}
+              onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
+            />
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Параметры склада</CardTitle>
-            <CardDescription>Остаток начинается с нуля, пока не будет поступления или корректировки.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {inventoryFields.map((field) => (
-              <div key={field.id} className="space-y-2">
-                <Label htmlFor={field.id}>{field.label}</Label>
-                <Input
-                  id={field.id}
-                  value={String(formState[field.id])}
-                  onChange={(event) => setFormState((current) => ({ ...current, [field.id]: event.target.value }))}
-                />
-              </div>
-            ))}
-            <div className="space-y-2">
-              <Label htmlFor="is_active">Статус</Label>
-              <select
-                id="is_active"
-                className="flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-                value={String(formState.is_active)}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, is_active: event.target.value === "true" }))
-                }
-              >
-                <option value="true">Активный</option>
-                <option value="false">Неактивный</option>
-              </select>
+          <div className="space-y-2">
+            <Label htmlFor="size">Размер</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="size"
+                placeholder="20"
+                inputMode="decimal"
+                value={formState.size}
+                onChange={(event) => setFormState((current) => ({ ...current, size: event.target.value }))}
+              />
+              <span className="shrink-0 text-sm text-muted-foreground">mm</span>
             </div>
-            {mutation.isError ? (
-              <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {extractErrorMessage(mutation.error)}
-              </p>
-            ) : null}
-            <Button
-              className="w-full"
-              type="button"
-              disabled={mutation.isPending || formState.name.trim().length === 0}
-              onClick={() =>
-                mutation.mutate({
-                  name: formState.name.trim(),
-                  manufacturer: formState.manufacturer.trim() || null,
-                  sku: formState.sku.trim() || null,
-                  barcode: formState.barcode.trim() || null,
-                  category: formState.category.trim() || null,
-                  unit: formState.unit.trim(),
-                  currency: formState.currency.trim().toUpperCase(),
-                  price: formState.price,
-                  cost: formState.cost || null,
-                  tax_rate: formState.tax_rate || null,
-                  stock_qty: formState.stock_qty || null,
-                  low_stock_threshold: formState.low_stock_threshold || null,
-                  is_active: formState.is_active,
-                })
-              }
-            >
-              {mutation.isPending ? "Сохраняем..." : "Сохранить товар"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {formState.name.trim() ? (
+            <p className="rounded-2xl bg-muted/60 px-4 py-2 text-sm text-muted-foreground">
+              Будет сохранено как: <span className="font-medium text-foreground">{previewName}</span>
+            </p>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="price">
+              Цена продажи <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="price"
+              inputMode="decimal"
+              placeholder="1250"
+              value={formState.price}
+              onChange={(event) => setFormState((current) => ({ ...current, price: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="manufacturer">Производитель</Label>
+            <Input
+              id="manufacturer"
+              placeholder="Необязательно"
+              value={formState.manufacturer}
+              onChange={(event) => setFormState((current) => ({ ...current, manufacturer: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Категория</Label>
+            <Input
+              id="category"
+              placeholder="Необязательно"
+              value={formState.category}
+              onChange={(event) => setFormState((current) => ({ ...current, category: event.target.value }))}
+            />
+          </div>
+
+          {mutation.isError ? (
+            <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {extractErrorMessage(mutation.error)}
+            </p>
+          ) : null}
+
+          <Button
+            className="w-full"
+            type="button"
+            disabled={mutation.isPending || !canSubmit}
+            onClick={() =>
+              mutation.mutate({
+                name: buildProductName(formState.name, formState.size),
+                manufacturer: formState.manufacturer.trim() || null,
+                category: formState.category.trim() || null,
+                price: formState.price,
+                unit: "pcs",
+                currency: "KZT",
+                is_active: true,
+              })
+            }
+          >
+            {mutation.isPending ? "Сохраняем..." : "Сохранить товар"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

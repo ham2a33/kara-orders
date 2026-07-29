@@ -126,16 +126,27 @@ export function DashboardClient(): ReactElement {
     [],
   );
 
-  const stats = dashboardQuery.data && ordersQuery.data
+  const dashboardStats = dashboardQuery.data
     ? [
-        { label: "Сегодня заказов", value: formatCount(dashboardQuery.data.metrics.today_orders), icon: ReceiptText },
-        { label: "Выручка за сегодня", value: formatMoney(dashboardQuery.data.metrics.today_revenue), icon: TrendingUp },
-        { label: "Средний чек", value: formatMoney(dashboardQuery.data.metrics.average_invoice), icon: Clock3 },
+        { label: "Заказы сегодня", value: formatCount(dashboardQuery.data.metrics.today_orders), icon: ReceiptText },
+        { label: "Выручка сегодня", value: formatMoney(dashboardQuery.data.metrics.today_revenue), icon: TrendingUp },
+        { label: "Всего товаров", value: formatCount(dashboardQuery.data.metrics.total_products), icon: Sparkles },
         {
-          label: "Товаров с низким остатком",
+          label: "Товары с низким остатком",
           value: formatCount(dashboardQuery.data.metrics.low_stock_products),
           icon: TriangleAlert,
           description: "Следите за запасами до того, как товар закончится.",
+        },
+      ]
+    : [];
+
+  const orderStats = dashboardQuery.data && ordersQuery.data
+    ? [
+        {
+          label: "Средний чек",
+          value: formatMoney(dashboardQuery.data.metrics.average_invoice),
+          icon: Clock3,
+          description: "Средняя сумма подтвержденного заказа.",
         },
         {
           label: "Новые",
@@ -192,8 +203,8 @@ export function DashboardClient(): ReactElement {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-          {stats.slice(0, 3).map((stat) => {
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {dashboardStats.map((stat) => {
             const Icon = stat.icon;
             return (
               <Card key={stat.label} className="shadow-soft">
@@ -217,8 +228,8 @@ export function DashboardClient(): ReactElement {
       </section>
 
       {dashboardQuery.data ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {stats.slice(3).map((stat) => {
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {orderStats.map((stat) => {
             return (
               <MetricCard
                 key={stat.label}
