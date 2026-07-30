@@ -30,6 +30,11 @@ from app.schemas.product import (
     ProductTagRead,
     ProductTagUpdateRequest,
     ProductUpdateRequest,
+    ProductBulkIdsRequest,
+    ProductBulkActionResponse,
+    ProductBulkPriceUpdateRequest,
+    ProductBulkStatusUpdateRequest,
+    ProductBulkVatUpdateRequest,
 )
 from app.services.product_service import ProductService
 from app.services.storage_service import StorageService
@@ -46,13 +51,26 @@ def _service(session: Session, settings: Settings, storage: StorageService | Non
 @router.get("", response_model=ProductListResponse)
 def list_products(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=0, le=10_000),
     search: str | None = Query(default=None, max_length=255),
     category_id: UUID | None = None,
     tag_id: UUID | None = None,
     is_active: bool | None = None,
     include_deleted: bool = False,
-    sort_by: Literal["created_at", "updated_at", "name", "sku", "barcode", "price", "stock_qty", "is_active"] = "created_at",
+    sort_by: Literal[
+        "created_at",
+        "updated_at",
+        "name",
+        "manufacturer",
+        "category",
+        "sku",
+        "barcode",
+        "price",
+        "cost",
+        "tax_rate",
+        "stock_qty",
+        "is_active",
+    ] = "created_at",
     sort_dir: Literal["asc", "desc"] = "desc",
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
@@ -175,6 +193,62 @@ def delete_tag(
 ) -> ProductRestoreResponse:
     _service(session, settings).delete_tag(current_user.company_id, tag_id)
     return ProductRestoreResponse(detail="Tag deleted")
+
+
+@router.post(
+    "/bulk/prices",
+    response_model=ProductBulkActionResponse,
+    dependencies=[Depends(require_roles(Role.MANAGER))],
+)
+def bulk_update_prices(
+    payload: ProductBulkPriceUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+    settings: Settings = Depends(get_app_settings),
+) -> ProductBulkActionResponse:
+    return _service(session, settings).bulk_update_prices(current_user.company_id, payload)
+
+
+@router.post(
+    "/bulk/vat",
+    response_model=ProductBulkActionResponse,
+    dependencies=[Depends(require_roles(Role.MANAGER))],
+)
+def bulk_update_vat(
+    payload: ProductBulkVatUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+    settings: Settings = Depends(get_app_settings),
+) -> ProductBulkActionResponse:
+    return _service(session, settings).bulk_update_vat(current_user.company_id, payload)
+
+
+@router.post(
+    "/bulk/status",
+    response_model=ProductBulkActionResponse,
+    dependencies=[Depends(require_roles(Role.MANAGER))],
+)
+def bulk_update_status(
+    payload: ProductBulkStatusUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+    settings: Settings = Depends(get_app_settings),
+) -> ProductBulkActionResponse:
+    return _service(session, settings).bulk_update_status(current_user.company_id, payload)
+
+
+@router.post(
+    "/bulk/delete",
+    response_model=ProductBulkActionResponse,
+    dependencies=[Depends(require_roles(Role.MANAGER))],
+)
+def bulk_delete_products(
+    payload: ProductBulkIdsRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+    settings: Settings = Depends(get_app_settings),
+) -> ProductBulkActionResponse:
+    return _service(session, settings).bulk_delete_products(current_user.company_id, payload.product_ids)
 
 
 @router.get("/{product_id}", response_model=ProductRead)

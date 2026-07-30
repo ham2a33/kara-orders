@@ -53,7 +53,7 @@ class OpenAIProvider:
                     "content": [{"type": "input_text", "text": f"{context}\n\n{text}"}],
                 },
             ],
-            "response_format": self._json_schema_response_format(schema),
+            "text": self._json_schema_text_config(schema),
         }
         payload = self._post_json("/responses", body)
         return self._build_result(payload, self.settings.openai_recognition_model)
@@ -88,7 +88,7 @@ class OpenAIProvider:
                     ],
                 },
             ],
-            "response_format": self._json_schema_response_format(schema),
+            "text": self._json_schema_text_config(schema),
         }
         payload = self._post_json("/responses", body)
         return self._build_result(payload, self.settings.openai_recognition_model)
@@ -103,6 +103,14 @@ class OpenAIProvider:
         schema: dict[str, Any],
     ) -> AIProviderResult:
         encoded = base64.b64encode(file_bytes).decode("utf-8")
+        mime_type = self._guess_mime_type(filename)
+        file_input: dict[str, Any] = {
+            "type": "input_file",
+            "file_data": f"data:{mime_type};base64,{encoded}",
+            "filename": filename,
+        }
+        if mime_type == "application/pdf":
+            file_input["detail"] = "high"
         body = {
             "model": self.settings.openai_recognition_model,
             "input": [
@@ -114,15 +122,11 @@ class OpenAIProvider:
                     "role": "user",
                     "content": [
                         {"type": "input_text", "text": context},
-                        {
-                            "type": "input_file",
-                            "file_data": encoded,
-                            "filename": filename,
-                        },
+                        file_input,
                     ],
                 },
             ],
-            "response_format": self._json_schema_response_format(schema),
+            "text": self._json_schema_text_config(schema),
         }
         payload = self._post_json("/responses", body)
         return self._build_result(payload, self.settings.openai_recognition_model)
@@ -186,16 +190,17 @@ class OpenAIProvider:
         )
 
     def _extract_output_text(self, payload: dict[str, Any]) -> str:
+        # Responses API exposes aggregated assistant text via output_text when available.
         output_text = payload.get("output_text")
         if isinstance(output_text, str) and output_text.strip():
             return output_text.strip()
 
         chunks: list[str] = []
         for item in payload.get("output", []):
-            if not isinstance(item, dict):
+            if not isinstance(item, dict) or item.get("type") != "message":
                 continue
             for content in item.get("content", []):
-                if not isinstance(content, dict):
+                if not isinstance(content, dict) or content.get("type") != "output_text":
                     continue
                 text = content.get("text")
                 if isinstance(text, str) and text.strip():
@@ -213,12 +218,14 @@ class OpenAIProvider:
             total_tokens=self._to_int(usage_payload.get("total_tokens")),
         )
 
-    def _json_schema_response_format(self, schema: dict[str, Any]) -> dict[str, Any]:
+    def _json_schema_text_config(self, schema: dict[str, Any]) -> dict[str, Any]:
         return {
-            "type": "json_schema",
-            "name": "kara_order_extraction",
-            "strict": True,
-            "schema": schema,
+            "format": {
+                "type": "json_schema",
+                "name": "kara_order_extraction",
+                "strict": True,
+                "schema": schema,
+            }
         }
 
     def _multipart_body(

@@ -34,6 +34,10 @@ from app.schemas.product import (
     ProductListResponse,
     ProductRead,
     ProductRestoreResponse,
+    ProductBulkActionResponse,
+    ProductBulkPriceUpdateRequest,
+    ProductBulkStatusUpdateRequest,
+    ProductBulkVatUpdateRequest,
     ProductTagCreateRequest,
     ProductTagListResponse,
     ProductTagRead,
@@ -41,6 +45,7 @@ from app.schemas.product import (
     ProductUpdateRequest,
 )
 from app.services.platform_service import PlatformService
+from app.services.product_size_parser import extract_size_from_name
 from app.services.storage_service import StorageService, build_storage_object_name
 
 
@@ -49,9 +54,13 @@ class ProductService:
         "created_at": Product.created_at,
         "updated_at": Product.updated_at,
         "name": Product.name,
+        "manufacturer": Product.manufacturer,
+        "category": Product.category,
         "sku": Product.sku,
         "barcode": Product.barcode,
         "price": Product.price,
+        "cost": Product.cost,
+        "tax_rate": Product.tax_rate,
         "stock_qty": Product.stock_qty,
         "is_active": Product.is_active,
     }
@@ -82,6 +91,7 @@ class ProductService:
     ) -> ProductListResponse:
         sort_column = self._SORT_COLUMNS.get(sort_by, Product.created_at)
         sort_expression = sort_column.asc() if sort_dir.lower() == "asc" else sort_column.desc()
+        effective_page_size = page_size if page_size > 0 else 10_000
 
         statement = (
             select(Product)
@@ -112,12 +122,14 @@ class ProductService:
 
         statement = statement.distinct().order_by(sort_expression)
         total = self._count_products(statement)
-        items = list(self.session.scalars(statement.offset((page - 1) * page_size).limit(page_size)).unique().all())
+        items = list(
+            self.session.scalars(statement.offset((page - 1) * effective_page_size).limit(effective_page_size)).unique().all()
+        )
 
         return ProductListResponse(
             items=[self._serialize_product(product) for product in items],
             page=page,
-            page_size=page_size,
+            page_size=page_size if page_size > 0 else total,
             total=total,
         )
 
@@ -142,6 +154,7 @@ class ProductService:
             category_id=category.id if category else None,
             category=category.name if category else payload.category,
             name=payload.name,
+            description=payload.description,
             manufacturer=payload.manufacturer,
             sku=sku,
             barcode=payload.barcode,
@@ -170,6 +183,123 @@ class ProductService:
             metadata={"name": payload.name, "sku": sku},
         )
         return self.get_product(company_id, product.id)
+
+    def bulk_update_prices(
+        self,
+        company_id: UUID,
+        payload: ProductBulkPriceUpdateRequest,
+    ) -> ProductBulkActionResponse:
+        products = self._get_products_for_bulk(company_id, payload.product_ids)
+        updated_ids: list[UUID] = []
+        for product in products:
+            field_name = payload.field
+            current_raw = getattr(product, field_name)
+            if current_raw is None:
+                if field_name == "cost":
+                    continue
+                current = Decimal("0")
+            else:
+                current = Decimal(str(current_raw))
+            delta = Decimal(str(payload.value))
+            if payload.mode == "percentage":
+                factor = delta / Decimal("100")
+                change = current * factor
+            else:
+                change = delta
+            if payload.operation == "decrease":
+                change = -change
+            new_value = max(current + change, Decimal("0")).quantize(Decimal("0.01"))
+            setattr(product, field_name, new_value)
+            updated_ids.append(product.id)
+        self.session.commit()
+        PlatformService(self.session).log_action(
+            action="products_bulk_price_updated",
+            company_id=company_id,
+            actor_user_id=None,
+            resource_type="product",
+            resource_id=None,
+            description="Bulk product price update",
+            metadata={
+                "field": payload.field,
+                "operation": payload.operation,
+                "mode": payload.mode,
+                "value": str(payload.value),
+                "count": len(updated_ids),
+            },
+        )
+        return ProductBulkActionResponse(updated=len(updated_ids), product_ids=updated_ids)
+
+    def bulk_update_vat(self, company_id: UUID, payload: ProductBulkVatUpdateRequest) -> ProductBulkActionResponse:
+        products = self._get_products_for_bulk(company_id, payload.product_ids)
+        for product in products:
+            product.tax_rate = payload.tax_rate
+        self.session.commit()
+        updated_ids = [product.id for product in products]
+        PlatformService(self.session).log_action(
+            action="products_bulk_vat_updated",
+            company_id=company_id,
+            actor_user_id=None,
+            resource_type="product",
+            resource_id=None,
+            description="Bulk product VAT update",
+            metadata={"tax_rate": str(payload.tax_rate) if payload.tax_rate is not None else None, "count": len(updated_ids)},
+        )
+        return ProductBulkActionResponse(updated=len(updated_ids), product_ids=updated_ids)
+
+    def bulk_update_status(
+        self,
+        company_id: UUID,
+        payload: ProductBulkStatusUpdateRequest,
+    ) -> ProductBulkActionResponse:
+        products = self._get_products_for_bulk(company_id, payload.product_ids)
+        for product in products:
+            product.is_active = payload.is_active
+        self.session.commit()
+        updated_ids = [product.id for product in products]
+        PlatformService(self.session).log_action(
+            action="products_bulk_status_updated",
+            company_id=company_id,
+            actor_user_id=None,
+            resource_type="product",
+            resource_id=None,
+            description="Bulk product status update",
+            metadata={"is_active": payload.is_active, "count": len(updated_ids)},
+        )
+        return ProductBulkActionResponse(updated=len(updated_ids), product_ids=updated_ids)
+
+    def bulk_delete_products(self, company_id: UUID, product_ids: list[UUID]) -> ProductBulkActionResponse:
+        products = self._get_products_for_bulk(company_id, product_ids)
+        for product in products:
+            product.deleted_at = sa.func.now()
+            product.is_active = False
+        self.session.commit()
+        updated_ids = [product.id for product in products]
+        PlatformService(self.session).log_action(
+            action="products_bulk_deleted",
+            company_id=company_id,
+            actor_user_id=None,
+            resource_type="product",
+            resource_id=None,
+            description="Bulk product delete",
+            metadata={"count": len(updated_ids)},
+        )
+        return ProductBulkActionResponse(updated=len(updated_ids), product_ids=updated_ids)
+
+    def _get_products_for_bulk(self, company_id: UUID, product_ids: list[UUID]) -> list[Product]:
+        if not product_ids:
+            raise ValidationAppError("No products selected")
+        products = list(
+            self.session.scalars(
+                select(Product).where(
+                    Product.company_id == company_id,
+                    Product.id.in_(product_ids),
+                    Product.deleted_at.is_(None),
+                )
+            ).all()
+        )
+        if len(products) != len(set(product_ids)):
+            raise NotFoundError("One or more products were not found")
+        return products
 
     def _generate_sku(self, company_id: UUID) -> str:
         existing_skus = self.session.scalars(
@@ -592,11 +722,14 @@ class ProductService:
         cost = Decimal(str(product.cost if product.cost is not None else product.price))
         stock_value = stock_qty * cost
         low_stock = bool(product.low_stock_threshold is not None and stock_qty <= product.low_stock_threshold)
+        extracted_size, _ = extract_size_from_name(product.name)
         return ProductRead(
             id=product.id,
             company_id=product.company_id,
             category_id=product.category_id,
             name=product.name,
+            description=product.description,
+            size=extracted_size,
             manufacturer=product.manufacturer,
             sku=product.sku,
             barcode=product.barcode,

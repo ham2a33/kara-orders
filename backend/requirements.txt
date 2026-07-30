@@ -11,3 +11,4 @@ reportlab==4.4.2
 sqlalchemy==2.0.38
 uvicorn[standard]==0.34.0
 xlsxwriter==3.2.5
+openpyxl==3.1.5

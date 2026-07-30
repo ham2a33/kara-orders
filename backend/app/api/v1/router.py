@@ -8,6 +8,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.companies import router as companies_router
 from app.api.v1.platform import router as platform_router
 from app.api.v1.orders import router as orders_router
+from app.api.v1.product_import import router as product_import_router
 from app.api.v1.products import router as products_router
 
 router = APIRouter(prefix="/api/v1", tags=["system"])
@@ -25,6 +26,7 @@ async def health_check() -> dict[str, str]:
 router.include_router(auth_router)
 router.include_router(companies_router)
 router.include_router(products_router)
+router.include_router(product_import_router)
 router.include_router(orders_router)
 router.include_router(analytics_router)
 router.include_router(platform_router)

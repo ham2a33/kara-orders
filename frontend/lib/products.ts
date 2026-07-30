@@ -8,6 +8,10 @@ import type {
   ProductInventoryTransaction,
   ProductListResponse,
   ProductUpdatePayload,
+  ProductBulkActionResponse,
+  ProductBulkPricePayload,
+  ProductBulkStatusPayload,
+  ProductBulkVatPayload,
 } from "@/types/products";
 
 type ProductQuery = {
@@ -24,8 +28,8 @@ type ProductQuery = {
 
 function buildQuery(params: ProductQuery = {}): string {
   const searchParams = new URLSearchParams();
-  if (params.page) searchParams.set("page", String(params.page));
-  if (params.pageSize) searchParams.set("page_size", String(params.pageSize));
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.pageSize !== undefined) searchParams.set("page_size", String(params.pageSize));
   if (params.search) searchParams.set("search", params.search);
   if (params.categoryId) searchParams.set("category_id", params.categoryId);
   if (params.tagId) searchParams.set("tag_id", params.tagId);
@@ -75,4 +79,23 @@ export async function getInventory(productId: string): Promise<ProductInventory>
 
 export async function getInventoryHistory(productId: string): Promise<ProductInventoryTransaction[]> {
   return apiClient<ProductInventoryTransaction[]>(`/products/${productId}/inventory/history`);
+}
+
+export async function bulkUpdateProductPrices(payload: ProductBulkPricePayload): Promise<ProductBulkActionResponse> {
+  return apiClient<ProductBulkActionResponse>("/products/bulk/prices", { method: "POST", body: payload });
+}
+
+export async function bulkUpdateProductVat(payload: ProductBulkVatPayload): Promise<ProductBulkActionResponse> {
+  return apiClient<ProductBulkActionResponse>("/products/bulk/vat", { method: "POST", body: payload });
+}
+
+export async function bulkUpdateProductStatus(payload: ProductBulkStatusPayload): Promise<ProductBulkActionResponse> {
+  return apiClient<ProductBulkActionResponse>("/products/bulk/status", { method: "POST", body: payload });
+}
+
+export async function bulkDeleteProducts(productIds: string[]): Promise<ProductBulkActionResponse> {
+  return apiClient<ProductBulkActionResponse>("/products/bulk/delete", {
+    method: "POST",
+    body: { product_ids: productIds },
+  });
 }

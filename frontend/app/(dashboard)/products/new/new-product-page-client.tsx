@@ -17,8 +17,11 @@ type FormState = {
   name: string;
   size: string;
   price: string;
+  cost: string;
+  taxRate: string;
   manufacturer: string;
   category: string;
+  description: string;
 };
 
 function buildProductName(name: string, size: string): string {
@@ -46,8 +49,11 @@ export function NewProductPageClient(): ReactElement {
     name: "",
     size: "",
     price: "",
+    cost: "",
+    taxRate: "",
     manufacturer: "",
     category: "",
+    description: "",
   });
 
   useEffect(() => {
@@ -140,6 +146,38 @@ export function NewProductPageClient(): ReactElement {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="cost">Себестоимость</Label>
+            <Input
+              id="cost"
+              inputMode="decimal"
+              placeholder="Необязательно"
+              value={formState.cost}
+              onChange={(event) => setFormState((current) => ({ ...current, cost: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="taxRate">НДС (%)</Label>
+            <Input
+              id="taxRate"
+              inputMode="decimal"
+              placeholder="12"
+              value={formState.taxRate}
+              onChange={(event) => setFormState((current) => ({ ...current, taxRate: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Описание</Label>
+            <Input
+              id="description"
+              placeholder="Необязательно"
+              value={formState.description}
+              onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="manufacturer">Производитель</Label>
             <Input
               id="manufacturer"
@@ -172,9 +210,12 @@ export function NewProductPageClient(): ReactElement {
             onClick={() =>
               mutation.mutate({
                 name: buildProductName(formState.name, formState.size),
+                description: formState.description.trim() || null,
                 manufacturer: formState.manufacturer.trim() || null,
                 category: formState.category.trim() || null,
                 price: formState.price,
+                cost: formState.cost.trim() || null,
+                tax_rate: formState.taxRate.trim() || null,
                 unit: "pcs",
                 currency: "KZT",
                 is_active: true,

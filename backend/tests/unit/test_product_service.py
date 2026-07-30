@@ -13,6 +13,8 @@ from app.schemas.product import (
     ProductCategoryCreateRequest,
     ProductCreateRequest,
     ProductInventoryTransactionCreateRequest,
+    ProductBulkPriceUpdateRequest,
+    ProductBulkVatUpdateRequest,
 )
 from app.services.product_service import ProductService
 
@@ -135,3 +137,41 @@ def test_product_service_auto_generates_sku(db_session) -> None:
 
     assert first.sku == "SKU-000001"
     assert second.sku == "SKU-000002"
+
+
+def test_product_service_bulk_price_and_vat_updates(db_session) -> None:
+    company, _ = _create_company_and_user(db_session)
+    service = _build_service(db_session)
+
+    first = service.create_product(
+        company.id,
+        ProductCreateRequest(name="Pipe A", price=Decimal("1000.00"), cost=Decimal("600.00"), tax_rate=Decimal("12")),
+    )
+    second = service.create_product(
+        company.id,
+        ProductCreateRequest(name="Pipe B", price=Decimal("2000.00"), cost=Decimal("1200.00"), tax_rate=Decimal("5")),
+    )
+
+    price_result = service.bulk_update_prices(
+        company.id,
+        ProductBulkPriceUpdateRequest(
+            product_ids=[first.id, second.id],
+            field="price",
+            operation="increase",
+            mode="percentage",
+            value=Decimal("10"),
+        ),
+    )
+    assert price_result.updated == 2
+
+    updated_first = service.get_product(company.id, first.id)
+    updated_second = service.get_product(company.id, second.id)
+    assert updated_first.price == Decimal("1100.00")
+    assert updated_second.price == Decimal("2200.00")
+
+    vat_result = service.bulk_update_vat(
+        company.id,
+        ProductBulkVatUpdateRequest(product_ids=[first.id], tax_rate=None),
+    )
+    assert vat_result.updated == 1
+    assert service.get_product(company.id, first.id).tax_rate is None

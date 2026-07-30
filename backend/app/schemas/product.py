@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from typing import Literal
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -54,6 +53,8 @@ class ProductRead(BaseModel):
     company_id: UUID
     category_id: UUID | None = None
     name: str
+    description: str | None = None
+    size: str | None = None
     manufacturer: str | None = None
     sku: str | None = None
     barcode: str | None = None
@@ -79,6 +80,7 @@ class ProductRead(BaseModel):
 
 class ProductCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
     manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)
     barcode: str | None = Field(default=None, max_length=80)
@@ -98,6 +100,7 @@ class ProductCreateRequest(BaseModel):
 
 class ProductUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
     manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)
     barcode: str | None = Field(default=None, max_length=80)
@@ -191,3 +194,27 @@ class ProductTagListResponse(BaseModel):
 
 class ProductCategoryListResponse(BaseModel):
     items: list[ProductCategoryRead]
+
+
+class ProductBulkIdsRequest(BaseModel):
+    product_ids: list[UUID] = Field(min_length=1, max_length=5000)
+
+
+class ProductBulkPriceUpdateRequest(ProductBulkIdsRequest):
+    field: Literal["price", "cost"] = "price"
+    operation: Literal["increase", "decrease"] = "increase"
+    mode: Literal["percentage", "fixed"] = "percentage"
+    value: Decimal = Field(gt=0)
+
+
+class ProductBulkVatUpdateRequest(ProductBulkIdsRequest):
+    tax_rate: Decimal | None = Field(default=None, ge=0, le=100)
+
+
+class ProductBulkStatusUpdateRequest(ProductBulkIdsRequest):
+    is_active: bool
+
+
+class ProductBulkActionResponse(BaseModel):
+    updated: int
+    product_ids: list[UUID]

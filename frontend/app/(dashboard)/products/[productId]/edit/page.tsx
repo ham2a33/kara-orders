@@ -14,6 +14,7 @@ import { getProduct, updateProduct } from "@/lib/products";
 
 type FormState = {
   name: string;
+  description: string;
   manufacturer: string;
   sku: string;
   barcode: string;
@@ -30,6 +31,7 @@ type FormState = {
 
 const editFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: string; span?: boolean }> = [
   { id: "name", label: "Название товара", span: true },
+  { id: "description", label: "Описание", span: true },
   { id: "manufacturer", label: "Производитель", span: true },
   { id: "sku", label: "SKU" },
   { id: "barcode", label: "Штрихкод" },
@@ -38,7 +40,7 @@ const editFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: stri
   { id: "currency", label: "Валюта" },
   { id: "price", label: "Цена продажи" },
   { id: "cost", label: "Себестоимость" },
-  { id: "tax_rate", label: "Налог" },
+  { id: "tax_rate", label: "НДС (%)" },
   { id: "stock_qty", label: "Начальный остаток" },
   { id: "low_stock_threshold", label: "Порог низкого остатка" },
 ];
@@ -57,6 +59,7 @@ export default function ProductEditPage(): ReactElement {
   const product = query.data;
   const [formState, setFormState] = useState<FormState>({
     name: "",
+    description: "",
     manufacturer: "",
     sku: "",
     barcode: "",
@@ -77,6 +80,7 @@ export default function ProductEditPage(): ReactElement {
     }
     setFormState({
       name: product.name ?? "",
+      description: product.description ?? "",
       manufacturer: product.manufacturer ?? "",
       sku: product.sku ?? "",
       barcode: product.barcode ?? "",
@@ -96,6 +100,7 @@ export default function ProductEditPage(): ReactElement {
     mutationFn: () =>
       updateProduct(productId, {
         name: formState.name.trim(),
+        description: formState.description.trim() || null,
         manufacturer: formState.manufacturer.trim() || null,
         sku: formState.sku.trim() || null,
         barcode: formState.barcode.trim() || null,
@@ -109,9 +114,9 @@ export default function ProductEditPage(): ReactElement {
         low_stock_threshold: formState.low_stock_threshold || null,
         is_active: formState.is_active,
       }),
-    onSuccess: async () => {
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(["product", productId], updated);
       await queryClient.invalidateQueries({ queryKey: ["products"] });
-      await queryClient.invalidateQueries({ queryKey: ["product", productId] });
       router.push(`/products/${productId}`);
     },
   });

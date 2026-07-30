@@ -25,6 +25,8 @@ export type Product = {
   company_id: string;
   category_id: string | null;
   name: string;
+  description: string | null;
+  size: string | null;
   manufacturer: string | null;
   sku: string | null;
   barcode: string | null;
@@ -87,6 +89,7 @@ export type ProductInventoryTransaction = {
 
 export type ProductCreatePayload = {
   name: string;
+  description?: string | null;
   manufacturer?: string | null;
   sku?: string | null;
   barcode?: string | null;
@@ -111,4 +114,27 @@ export type ProductCategoryPayload = {
   parent_id?: string | null;
   sort_order?: number;
   is_active?: boolean;
+};
+
+export type ProductBulkActionResponse = {
+  updated: number;
+  product_ids: string[];
+};
+
+export type ProductBulkPricePayload = {
+  product_ids: string[];
+  field: "price" | "cost";
+  operation: "increase" | "decrease";
+  mode: "percentage" | "fixed";
+  value: string | number;
+};
+
+export type ProductBulkVatPayload = {
+  product_ids: string[];
+  tax_rate: string | number | null;
+};
+
+export type ProductBulkStatusPayload = {
+  product_ids: string[];
+  is_active: boolean;
 };

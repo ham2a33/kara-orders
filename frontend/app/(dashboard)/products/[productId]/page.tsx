@@ -5,6 +5,7 @@ import { useMemo, type ReactElement } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 
+import { formatVatLabel } from "@/components/products/catalog/catalog-modals";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,12 +53,38 @@ export default function ProductDetailsPage(): ReactElement {
   const product = productQuery.data;
   const metrics = useMemo(
     () => [
-      { label: "Текущий остаток", value: `${inventoryQuery.data?.current_stock ?? product?.stock_qty ?? "0"} ${product?.unit ?? ""}`.trim() },
-      { label: "Стоимость склада", value: formatMoney(inventoryQuery.data?.stock_value ?? product?.stock_value ?? "0", product?.currency ?? "KZT") },
+      {
+        label: "Текущий остаток",
+        value: `${inventoryQuery.data?.current_stock ?? product?.stock_qty ?? "0"} ${product?.unit ?? ""}`.trim(),
+      },
+      {
+        label: "Стоимость склада",
+        value: formatMoney(inventoryQuery.data?.stock_value ?? product?.stock_value ?? "0", product?.currency ?? "KZT"),
+      },
       { label: "Цена продажи", value: formatMoney(product?.price ?? "0", product?.currency ?? "KZT") },
-      { label: "Налог", value: product?.tax_rate ? `${product.tax_rate}%` : "—" },
+      { label: "Себестоимость", value: formatMoney(product?.cost ?? "0", product?.currency ?? "KZT") },
     ],
     [inventoryQuery.data?.current_stock, inventoryQuery.data?.stock_value, product],
+  );
+
+  const detailRows = useMemo(
+    () => [
+      { label: "Название", value: product?.name ?? "—" },
+      { label: "SKU", value: product?.sku ?? "—" },
+      { label: "Размер", value: product?.size ?? "—" },
+      { label: "Производитель", value: product?.manufacturer ?? "—" },
+      { label: "Категория", value: product?.category ?? "—" },
+      {
+        label: "Остаток",
+        value: `${inventoryQuery.data?.current_stock ?? product?.stock_qty ?? "0"} ${product?.unit ?? ""}`.trim(),
+      },
+      { label: "Цена продажи", value: formatMoney(product?.price ?? "0", product?.currency ?? "KZT") },
+      { label: "Себестоимость", value: product?.cost ? formatMoney(product.cost, product.currency) : "—" },
+      { label: "НДС", value: formatVatLabel(product?.tax_rate) },
+      { label: "Статус", value: product?.is_active ? "Активный" : "Неактивный" },
+      { label: "Описание", value: product?.description?.trim() || "—" },
+    ],
+    [inventoryQuery.data?.current_stock, product],
   );
 
   return (
@@ -68,7 +95,7 @@ export default function ProductDetailsPage(): ReactElement {
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight">{product?.name ?? "Товар"}</h1>
             <p className="max-w-2xl text-muted-foreground">
-              Позиция каталога {productId} с остатками, ценой, изображениями и историей движений, готовая к live API.
+              Полная карточка товара с остатками, ценами, НДС, изображениями и историей движений.
             </p>
           </div>
         </div>
@@ -113,17 +140,16 @@ export default function ProductDetailsPage(): ReactElement {
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader>
-          <CardTitle>Сводка товара</CardTitle>
-          <CardDescription>Кратко и понятно для склада и продаж.</CardDescription>
+            <CardTitle>Сводка товара</CardTitle>
+            <CardDescription>Основные поля каталога.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Производитель: {product?.manufacturer ?? "—"}</p>
-            <p>SKU: {product?.sku ?? "—"}</p>
-            <p>Barcode: {product?.barcode ?? "—"}</p>
-            <p>Category: {product?.category ?? "—"}</p>
-            <p>Tags: {product?.tags.map((tag) => tag.name).join(", ") || "—"}</p>
-            <p>Статус: {product?.is_active ? "Активный" : "Неактивный"}</p>
-            <p>Updated: {formatDate(product?.updated_at ?? null)}</p>
+          <CardContent className="grid gap-2 text-sm">
+            {detailRows.map((row) => (
+              <div key={row.label} className="grid gap-1 border-b border-dashed py-2 last:border-0 sm:grid-cols-[160px_1fr]">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium">{row.value}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -133,34 +159,44 @@ export default function ProductDetailsPage(): ReactElement {
             <CardDescription>Основное изображение и дополнительные ракурсы.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="aspect-[4/3] rounded-2xl border border-dashed bg-muted/20" />
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-2xl border bg-muted/30 p-4 text-sm">Основное изображение</div>
-              <div className="rounded-2xl border bg-muted/30 p-4 text-sm">Дополнительное изображение</div>
-            </div>
+            {(product?.images ?? []).length === 0 ? (
+              <div className="aspect-[4/3] rounded-2xl border border-dashed bg-muted/20" />
+            ) : (
+              (product?.images ?? []).map((image) => (
+                <div key={image.id} className="overflow-hidden rounded-2xl border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.url} alt={image.alt_text ?? product?.name ?? "Product image"} className="aspect-[4/3] w-full object-cover" />
+                  {image.is_primary ? <p className="px-3 py-2 text-xs text-muted-foreground">Основное изображение</p> : null}
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-            <CardTitle>История склада</CardTitle>
-            <CardDescription>Последние движения остатков из backend-реестра.</CardDescription>
+          <CardTitle>История склада</CardTitle>
+          <CardDescription>Последние движения остатков из backend-реестра.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {(historyQuery.data ?? []).map((row) => (
-            <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-              <div>
-                <p className="font-medium">{row.transaction_type}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(row.created_at)} · {row.note ?? "Без заметки"}
-                </p>
+          {(historyQuery.data ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">История пока пуста.</p>
+          ) : (
+            (historyQuery.data ?? []).map((row) => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3">
+                <div>
+                  <p className="font-medium">{row.transaction_type}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(row.created_at)} · {row.note ?? "Без заметки"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">{row.quantity} units</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">{row.quantity} units</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
