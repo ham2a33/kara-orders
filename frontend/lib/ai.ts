@@ -78,6 +78,15 @@ export async function recognizePdf(file: File): Promise<AIRecognition> {
   });
 }
 
+export async function createDraftOrderFromRecognition(recognitionId: string): Promise<{ order: AIRecognitionConfirmResponse["order"] }> {
+  return apiClient<{ order: AIRecognitionConfirmResponse["order"] }>(
+    `/ai/order-recognitions/${recognitionId}/draft-order`,
+    {
+      method: "POST",
+    },
+  );
+}
+
 export async function confirmRecognition(
   recognitionId: string,
   payload: AIRecognitionConfirmPayload,

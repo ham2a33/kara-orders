@@ -78,10 +78,10 @@ SIZE_PATTERNS: tuple[SizePattern, ...] = _build_size_patterns()
 
 def normalize_product_name_and_size(name: str, size: str | None = None) -> tuple[str, str | None]:
     cleaned_name = name.strip()
-    explicit_size = (size or "").strip() or None
+    explicit_size = normalize_size_text(size.strip()) if size and size.strip() else None
     extracted_size, cleaned_name = extract_size_from_name(cleaned_name)
-    final_size = explicit_size or extracted_size
-    return cleaned_name, final_size
+    final_size = normalize_size_text(explicit_size) if explicit_size else extracted_size
+    return clean_product_name(cleaned_name), final_size
 
 
 def extract_size_from_name(name: str) -> tuple[str | None, str]:

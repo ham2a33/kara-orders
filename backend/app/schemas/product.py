@@ -80,6 +80,7 @@ class ProductRead(BaseModel):
 
 class ProductCreateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
+    size: str | None = Field(default=None, max_length=120)
     description: str | None = Field(default=None, max_length=5000)
     manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)
@@ -100,6 +101,7 @@ class ProductCreateRequest(BaseModel):
 
 class ProductUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=255)
+    size: str | None = Field(default=None, max_length=120)
     description: str | None = Field(default=None, max_length=5000)
     manufacturer: str | None = Field(default=None, max_length=120)
     sku: str | None = Field(default=None, max_length=80)

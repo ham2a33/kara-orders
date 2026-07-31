@@ -1,3 +1,4 @@
+from app.db.models.ai_learning import AILearning
 from app.db.models.ai_recognition import AIRecognition
 from app.db.models.audit_log import AuditLog
 from app.db.models.company import Company
@@ -20,6 +21,7 @@ __all__ = [
     "Company",
     "CompanyInvitation",
     "AIRecognition",
+    "AILearning",
     "AuditLog",
     "CompanySubscription",
     "CompanyUsage",

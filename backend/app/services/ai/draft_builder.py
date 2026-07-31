@@ -41,7 +41,10 @@ class OrderDraftBuilder:
     def _serialize_item(self, item: MatchedAIItem) -> dict[str, Any]:
         return {
             "recognized_name": item.recognized_name,
-            "product_name": item.recognized_name,
+            "product_name": item.product_name,
+            "size": item.size,
+            "catalog_search_key": item.catalog_search_key,
+            "source_line": item.source_line,
             "quantity": str(item.quantity),
             "unit": item.unit,
             "confidence": str(item.confidence),
@@ -49,6 +52,7 @@ class OrderDraftBuilder:
             "match_method": item.match_method,
             "needs_review": item.needs_review,
             "selected_product_id": str(item.selected_product.id) if item.selected_product else None,
+            "match_diagnostics": item.match_diagnostics,
         }
 
     def _average_confidence(self, values: list[Decimal]) -> Decimal | None:

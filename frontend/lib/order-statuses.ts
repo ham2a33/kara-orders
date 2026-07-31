@@ -1,6 +1,7 @@
 import type { OrderStatus } from "@/types/orders";
 
 export const ORDER_STATUS_OPTIONS: Array<{ value: OrderStatus; label: string }> = [
+  { value: "draft", label: "Черновик" },
   { value: "new", label: "Новый" },
   { value: "confirmed", label: "Подтвержден" },
   { value: "deleted", label: "Удален" },
@@ -8,6 +9,8 @@ export const ORDER_STATUS_OPTIONS: Array<{ value: OrderStatus; label: string }> 
 
 export function orderStatusLabel(status: OrderStatus | string): string {
   switch (status) {
+    case "draft":
+      return "Черновик";
     case "new":
       return "Новый";
     case "confirmed":

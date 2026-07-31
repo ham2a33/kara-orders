@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactElement } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  RecognitionProgressOverlay,
+  type RecognitionInputKind,
+} from "@/components/ai/recognition-progress-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { recognizePdf, recognizePhoto, recognizeText, recognizeVoice } from "@/lib/ai";
-import { extractErrorMessage } from "@/lib/errors";
+import type { AIRecognition } from "@/types/ai";
 
 const draftStorageKey = "kara_orders_ai_text_draft";
 
@@ -38,6 +41,20 @@ const inputs = [
   },
 ] as const;
 
+type FlowState = {
+  open: boolean;
+  phase: "running" | "success" | "error";
+  inputKind: RecognitionInputKind;
+  error: unknown;
+};
+
+const idleFlow: FlowState = {
+  open: false,
+  phase: "running",
+  inputKind: "text",
+  error: null,
+};
+
 export default function AiPage(): ReactElement {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -45,41 +62,46 @@ export default function AiPage(): ReactElement {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const photoRef = useRef<HTMLInputElement | null>(null);
-  const voiceRef = useRef<HTMLInputElement | null>(null);
-  const pdfRef = useRef<HTMLInputElement | null>(null);
+  const [flow, setFlow] = useState<FlowState>(idleFlow);
+  const retryRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     setText(window.localStorage.getItem(draftStorageKey) ?? "");
   }, []);
 
-  const textMutation = useMutation({
-    mutationFn: recognizeText,
-    onSuccess: (recognition) => {
-      router.push(`/ai/review/${recognition.id}`);
+  const finishSuccess = useCallback(
+    (recognition: AIRecognition) => {
+      if (!recognition?.id) {
+        setFlow((current) => ({
+          ...current,
+          phase: "error",
+          error: new Error("Сервер не вернул идентификатор распознавания"),
+        }));
+        return;
+      }
+      setFlow((current) => ({ ...current, phase: "success" }));
+      window.setTimeout(() => {
+        setFlow(idleFlow);
+        router.push(`/orders/new?recognitionId=${recognition.id}`);
+      }, 450);
     },
-  });
+    [router],
+  );
 
-  const photoMutation = useMutation({
-    mutationFn: recognizePhoto,
-    onSuccess: (recognition) => {
-      router.push(`/ai/review/${recognition.id}`);
-    },
-  });
+  const runRecognition = useCallback(
+    (inputKind: RecognitionInputKind, task: () => Promise<AIRecognition>) => {
+      setMessage(null);
+      setFlow({ open: true, phase: "running", inputKind, error: null });
+      retryRef.current = () => runRecognition(inputKind, task);
 
-  const voiceMutation = useMutation({
-    mutationFn: recognizeVoice,
-    onSuccess: (recognition) => {
-      router.push(`/ai/review/${recognition.id}`);
+      void task()
+        .then(finishSuccess)
+        .catch((error: unknown) => {
+          setFlow((current) => ({ ...current, phase: "error", error }));
+        });
     },
-  });
-
-  const pdfMutation = useMutation({
-    mutationFn: recognizePdf,
-    onSuccess: (recognition) => {
-      router.push(`/ai/review/${recognition.id}`);
-    },
-  });
+    [finishSuccess],
+  );
 
   const saveDraft = (): void => {
     window.localStorage.setItem(draftStorageKey, text);
@@ -88,6 +110,15 @@ export default function AiPage(): ReactElement {
 
   return (
     <div className="space-y-6">
+      <RecognitionProgressOverlay
+        open={flow.open}
+        inputKind={flow.inputKind}
+        phase={flow.phase}
+        error={flow.error}
+        onRetry={() => retryRef.current?.()}
+        onClose={() => setFlow(idleFlow)}
+      />
+
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
           <Badge>ИИ-распознавание</Badge>
@@ -131,21 +162,13 @@ export default function AiPage(): ReactElement {
                 {message}
               </p>
             ) : null}
-            {textMutation.isError ? (
-              <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {extractErrorMessage(textMutation.error)}
-              </p>
-            ) : null}
             <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
-                disabled={textMutation.isPending || text.trim().length === 0}
-                onClick={() => {
-                  setMessage(null);
-                  textMutation.mutate(text);
-                }}
+                disabled={flow.open && flow.phase === "running" || text.trim().length === 0}
+                onClick={() => runRecognition("text", () => recognizeText(text.trim()))}
               >
-                {textMutation.isPending ? "Распознаём..." : "Извлечь позиции"}
+                Извлечь позиции
               </Button>
               <Button type="button" variant="outline" onClick={saveDraft} disabled={text.trim().length === 0}>
                 Сохранить черновик
@@ -166,64 +189,76 @@ export default function AiPage(): ReactElement {
                 {input.title === "Фото" ? (
                   <>
                     <Input
-                      ref={photoRef}
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
                     />
+                    {photoFile ? (
+                      <p className="text-xs text-muted-foreground">Выбрано: {photoFile.name}</p>
+                    ) : null}
                     <Button
                       className="w-full"
                       variant="secondary"
                       type="button"
-                      disabled={photoMutation.isPending || photoFile == null}
+                      disabled={(flow.open && flow.phase === "running") || photoFile == null}
                       onClick={() => {
-                        setMessage(null);
-                        photoMutation.mutate(photoFile as File);
+                        if (!photoFile) {
+                          return;
+                        }
+                        runRecognition("photo", () => recognizePhoto(photoFile));
                       }}
                     >
-                      {photoMutation.isPending ? "Загрузка..." : "Открыть проверку"}
+                      Открыть проверку
                     </Button>
                   </>
                 ) : input.title === "Голос" ? (
                   <>
                     <Input
-                      ref={voiceRef}
                       type="file"
                       accept="audio/mpeg,audio/wav,audio/mp4,audio/x-m4a"
                       onChange={(event) => setVoiceFile(event.target.files?.[0] ?? null)}
                     />
+                    {voiceFile ? (
+                      <p className="text-xs text-muted-foreground">Выбрано: {voiceFile.name}</p>
+                    ) : null}
                     <Button
                       className="w-full"
                       variant="secondary"
                       type="button"
-                      disabled={voiceMutation.isPending || voiceFile == null}
+                      disabled={(flow.open && flow.phase === "running") || voiceFile == null}
                       onClick={() => {
-                        setMessage(null);
-                        voiceMutation.mutate(voiceFile as File);
+                        if (!voiceFile) {
+                          return;
+                        }
+                        runRecognition("voice", () => recognizeVoice(voiceFile));
                       }}
                     >
-                      {voiceMutation.isPending ? "Загрузка..." : "Открыть проверку"}
+                      Открыть проверку
                     </Button>
                   </>
                 ) : input.title === "PDF" ? (
                   <>
                     <Input
-                      ref={pdfRef}
                       type="file"
                       accept="application/pdf"
                       onChange={(event) => setPdfFile(event.target.files?.[0] ?? null)}
                     />
+                    {pdfFile ? (
+                      <p className="text-xs text-muted-foreground">Выбрано: {pdfFile.name}</p>
+                    ) : null}
                     <Button
                       className="w-full"
                       variant="secondary"
                       type="button"
-                      disabled={pdfMutation.isPending || pdfFile == null}
+                      disabled={(flow.open && flow.phase === "running") || pdfFile == null}
                       onClick={() => {
-                        setMessage(null);
-                        pdfMutation.mutate(pdfFile as File);
+                        if (!pdfFile) {
+                          return;
+                        }
+                        runRecognition("pdf", () => recognizePdf(pdfFile));
                       }}
                     >
-                      {pdfMutation.isPending ? "Загрузка..." : "Открыть проверку"}
+                      Открыть проверку
                     </Button>
                   </>
                 ) : null}

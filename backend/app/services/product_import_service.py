@@ -139,11 +139,11 @@ class ProductImportService:
 
         for index, row in enumerate(payload.rows):
             try:
-                name = self._format_product_name(row.name, row.size)
                 self.product_service.create_product(
                     company_id,
                     ProductCreateRequest(
-                        name=name,
+                        name=row.name,
+                        size=row.size,
                         price=row.price,
                         category=row.category,
                         manufacturer=row.manufacturer,

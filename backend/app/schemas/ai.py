@@ -12,7 +12,7 @@ from app.schemas.product import ProductRead
 
 AIInputType = Literal["photo", "voice", "text", "pdf"]
 AIRecognitionStatus = Literal["completed", "needs_review", "failed", "converted"]
-AIItemStatus = Literal["matched", "needs_review", "unmatched"]
+AIItemStatus = Literal["matched", "needs_review", "unmatched", "not_found"]
 
 
 class AICandidateProductRead(BaseModel):
@@ -27,11 +27,29 @@ class AICandidateProductRead(BaseModel):
     image_url: str | None = None
 
 
+class AIMatchDiagnosticsRead(BaseModel):
+    ocr_line: str | None = None
+    parser_product_name: str | None = None
+    parser_size: str | None = None
+    parser_quantity: str | None = None
+    parser_unit: str | None = None
+    catalog_match_count: int = 0
+    best_match_name: str | None = None
+    best_match_score: float | None = None
+    outcome: str | None = None
+    failure_reason: str | None = None
+    name_keyword_hits: list[str] = Field(default_factory=list)
+    available_sizes_for_name: list[str] = Field(default_factory=list)
+    top_matches: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class AIRecognitionItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     recognized_name: str
     product_name: str | None = None
+    size: str | None = None
+    catalog_search_key: str | None = None
     quantity: Decimal
     unit: str | None = None
     confidence: Decimal
@@ -41,13 +59,16 @@ class AIRecognitionItemRead(BaseModel):
     match_method: str | None = None
     needs_review: bool = False
     matched_product: ProductRead | None = None
+    match_diagnostics: dict[str, Any] | None = None
 
 
 class AIExtractionItem(BaseModel):
     product_name: str = Field(min_length=1, max_length=255)
+    size: str | None = Field(default=None, max_length=64)
     quantity: Decimal = Field(gt=0)
-    unit: str | None = Field(default=None, max_length=32)
+    unit: str = Field(default="шт", max_length=32)
     confidence: Decimal = Field(ge=0, le=1)
+    source_line: str | None = Field(default=None, max_length=500)
 
 
 class AIExtractionPayload(BaseModel):
@@ -106,4 +127,8 @@ class AIRecognitionResponse(BaseModel):
 
 class AIRecognitionConfirmResponse(BaseModel):
     recognition: AIRecognitionRead
+    order: OrderRead
+
+
+class AIRecognitionDraftOrderResponse(BaseModel):
     order: OrderRead

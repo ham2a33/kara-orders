@@ -1,6 +1,8 @@
+import type { OrderStatus } from "@/types/orders";
+
 export type AIInputType = "photo" | "voice" | "text" | "pdf";
 export type AIRecognitionStatus = "completed" | "needs_review" | "failed" | "converted";
-export type AIItemStatus = "matched" | "needs_review" | "unmatched";
+export type AIItemStatus = "matched" | "needs_review" | "unmatched" | "not_found";
 
 export type AICandidateProduct = {
   id: string;
@@ -12,9 +14,27 @@ export type AICandidateProduct = {
   image_url: string | null;
 };
 
+export type AIMatchDiagnostics = {
+  ocr_line?: string | null;
+  parser_product_name?: string | null;
+  parser_size?: string | null;
+  parser_quantity?: string | null;
+  parser_unit?: string | null;
+  catalog_match_count?: number;
+  best_match_name?: string | null;
+  best_match_score?: number | null;
+  outcome?: string | null;
+  failure_reason?: string | null;
+  name_keyword_hits?: string[];
+  available_sizes_for_name?: string[];
+  top_matches?: Array<{ name: string; score: number; size_match: boolean }>;
+};
+
 export type AIRecognitionItem = {
   recognized_name: string;
   product_name: string | null;
+  size: string | null;
+  catalog_search_key: string | null;
   quantity: string;
   unit: string | null;
   confidence: string;
@@ -23,6 +43,7 @@ export type AIRecognitionItem = {
   candidate_products: AICandidateProduct[];
   match_method: string | null;
   needs_review: boolean;
+  match_diagnostics: AIMatchDiagnostics | null;
   matched_product: {
     id: string;
     name: string;
@@ -101,11 +122,12 @@ export type AIRecognitionConfirmPayload = {
   customer_phone?: string | null;
   customer_address?: string | null;
   notes?: string | null;
-  status?: "draft" | "confirmed" | "completed" | "cancelled";
+  status?: OrderStatus;
   items: Array<{
     product_id: string;
     quantity: string | number;
     discount_amount?: string | number | null;
+    unit_price?: string | number | null;
   }>;
 };
 

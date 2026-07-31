@@ -88,6 +88,9 @@ export default function CompanyProfilePage(): ReactElement {
             <CardDescription>Переходите в отдельные разделы управления компанией.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
+            <Button asChild variant="outline" className="justify-start">
+              <Link href="/settings/store">Информация магазина</Link>
+            </Button>
             <Button asChild className="justify-start">
               <Link href="/dashboard/company/settings">Открыть настройки</Link>
             </Button>

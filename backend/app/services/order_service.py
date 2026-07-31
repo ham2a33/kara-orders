@@ -19,6 +19,7 @@ from app.db.models.product import Product
 from app.db.models.user import User
 from app.repositories.order_repository import OrderRepository
 from app.schemas.order import (
+    InvoiceCompanyPreview,
     InvoicePreviewResponse,
     OrderCreateRequest,
     OrderItemRead,
@@ -216,7 +217,28 @@ class OrderService:
         order = self.orders.get_with_items(order_id, company_id)
         if order is None:
             raise NotFoundError("Order not found")
-        return InvoicePreviewResponse(order=self._serialize_order(order), company_name=order.company.name)
+        company = order.company
+        return InvoicePreviewResponse(
+            order=self._serialize_order(order),
+            company_name=company.name,
+            company=InvoiceCompanyPreview(
+                name=company.name,
+                bin_tax_id=company.bin_tax_id,
+                phone=company.phone,
+                email=company.email,
+                website=company.website,
+                address=company.address,
+                instagram=company.instagram,
+                director_name=company.director_name,
+                welcome_message=company.welcome_message,
+                receipt_signature=company.receipt_signature,
+                footer_text=company.footer_text,
+                invoice_logo_url=company.invoice_logo_url,
+                tax_percentage=company.tax_percentage,
+                currency=company.currency,
+                timezone=company.timezone or "Asia/Almaty",
+            ),
+        )
 
     def generate_invoice_pdf(self, company_id: UUID, order_id: UUID) -> StreamingResponse:
         order = self.orders.get_with_items(order_id, company_id)
@@ -282,7 +304,10 @@ class OrderService:
         for item_payload in payload_items:
             product = products_by_id[item_payload.product_id]
             quantity = self._quantize(item_payload.quantity)
-            unit_price = self._quantize(Decimal(str(product.price)))
+            if item_payload.unit_price is not None:
+                unit_price = self._quantize(Decimal(str(item_payload.unit_price)))
+            else:
+                unit_price = self._quantize(Decimal(str(product.price)))
             line_subtotal = self._quantize(quantity * unit_price)
             discount_amount = self._quantize(item_payload.discount_amount or Decimal("0"))
             if discount_amount > line_subtotal:

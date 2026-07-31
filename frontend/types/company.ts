@@ -20,6 +20,10 @@ export type Company = {
   notes: string | null;
   address: string | null;
   phone: string | null;
+  instagram: string | null;
+  director_name: string | null;
+  welcome_message: string | null;
+  receipt_signature: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +46,10 @@ export type CompanyUpdatePayload = Partial<{
   footer_text: string | null;
   payment_information: string | null;
   notes: string | null;
+  instagram: string | null;
+  director_name: string | null;
+  welcome_message: string | null;
+  receipt_signature: string | null;
 }>;
 
 export type CompanyUser = {

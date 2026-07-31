@@ -11,11 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateRecognitionItemSelection } from "@/lib/ai";
 import { createProduct } from "@/lib/products";
+import {
+  PRODUCT_SIZE_UNIT_SUFFIXES,
+  buildProductDisplayName,
+  formatProductSizeValue,
+  type ProductSizeUnitId,
+} from "@/lib/product-size";
 import { extractErrorMessage } from "@/lib/errors";
 
 type FormState = {
   name: string;
   size: string;
+  sizeUnit: ProductSizeUnitId;
   price: string;
   cost: string;
   taxRate: string;
@@ -24,13 +31,9 @@ type FormState = {
   description: string;
 };
 
-function buildProductName(name: string, size: string): string {
-  const trimmedName = name.trim();
-  const trimmedSize = size.trim();
-  if (trimmedSize) {
-    return `${trimmedName} - ${trimmedSize} mm`;
-  }
-  return trimmedName;
+function resolveStoredSize(size: string, unit: ProductSizeUnitId): string | null {
+  const formatted = formatProductSizeValue(size, unit);
+  return formatted.trim() ? formatted : null;
 }
 
 export function NewProductPageClient(): ReactElement {
@@ -48,6 +51,7 @@ export function NewProductPageClient(): ReactElement {
   const [formState, setFormState] = useState<FormState>({
     name: "",
     size: "",
+    sizeUnit: "mm",
     price: "",
     cost: "",
     taxRate: "",
@@ -83,7 +87,8 @@ export function NewProductPageClient(): ReactElement {
   });
 
   const canSubmit = formState.name.trim().length > 0 && formState.price.trim().length > 0;
-  const previewName = buildProductName(formState.name, formState.size);
+  const storedSize = resolveStoredSize(formState.size, formState.sizeUnit);
+  const previewName = buildProductDisplayName(formState.name, storedSize ?? "");
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -117,13 +122,32 @@ export function NewProductPageClient(): ReactElement {
             <div className="flex items-center gap-2">
               <Input
                 id="size"
-                placeholder="20"
+                placeholder="20, 3x2.5, 32 PN20"
                 inputMode="decimal"
                 value={formState.size}
                 onChange={(event) => setFormState((current) => ({ ...current, size: event.target.value }))}
               />
-              <span className="shrink-0 text-sm text-muted-foreground">mm</span>
+              <select
+                aria-label="Единица размера"
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                value={formState.sizeUnit}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    sizeUnit: event.target.value as ProductSizeUnitId,
+                  }))
+                }
+              >
+                {PRODUCT_SIZE_UNIT_SUFFIXES.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Диаметр, профиль (20x40), кабель (3x2.5), PN/SDR или произвольный текст — для поиска при распознавании заказов.
+            </p>
           </div>
 
           {formState.name.trim() ? (
@@ -209,7 +233,8 @@ export function NewProductPageClient(): ReactElement {
             disabled={mutation.isPending || !canSubmit}
             onClick={() =>
               mutation.mutate({
-                name: buildProductName(formState.name, formState.size),
+                name: formState.name.trim(),
+                size: storedSize,
                 description: formState.description.trim() || null,
                 manufacturer: formState.manufacturer.trim() || null,
                 category: formState.category.trim() || null,

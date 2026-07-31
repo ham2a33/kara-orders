@@ -14,6 +14,7 @@ import { getProduct, updateProduct } from "@/lib/products";
 
 type FormState = {
   name: string;
+  size: string;
   description: string;
   manufacturer: string;
   sku: string;
@@ -31,6 +32,7 @@ type FormState = {
 
 const editFields: Array<{ id: Exclude<keyof FormState, "is_active">; label: string; span?: boolean }> = [
   { id: "name", label: "Название товара", span: true },
+  { id: "size", label: "Размер (характеристика)", span: true },
   { id: "description", label: "Описание", span: true },
   { id: "manufacturer", label: "Производитель", span: true },
   { id: "sku", label: "SKU" },
@@ -59,6 +61,7 @@ export default function ProductEditPage(): ReactElement {
   const product = query.data;
   const [formState, setFormState] = useState<FormState>({
     name: "",
+    size: "",
     description: "",
     manufacturer: "",
     sku: "",
@@ -80,6 +83,7 @@ export default function ProductEditPage(): ReactElement {
     }
     setFormState({
       name: product.name ?? "",
+      size: product.size ?? "",
       description: product.description ?? "",
       manufacturer: product.manufacturer ?? "",
       sku: product.sku ?? "",
@@ -100,6 +104,7 @@ export default function ProductEditPage(): ReactElement {
     mutationFn: () =>
       updateProduct(productId, {
         name: formState.name.trim(),
+        size: formState.size.trim() || null,
         description: formState.description.trim() || null,
         manufacturer: formState.manufacturer.trim() || null,
         sku: formState.sku.trim() || null,

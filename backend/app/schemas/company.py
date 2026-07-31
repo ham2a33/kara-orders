@@ -31,6 +31,10 @@ class CompanyRead(BaseModel):
     notes: str | None = None
     address: str | None = None
     phone: str | None = None
+    instagram: str | None = None
+    director_name: str | None = None
+    welcome_message: str | None = None
+    receipt_signature: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -53,6 +57,10 @@ class CompanyUpdateRequest(BaseModel):
     footer_text: str | None = Field(default=None, max_length=500)
     payment_information: str | None = None
     notes: str | None = None
+    instagram: str | None = Field(default=None, max_length=128)
+    director_name: str | None = Field(default=None, max_length=120)
+    welcome_message: str | None = None
+    receipt_signature: str | None = None
 
 
 class CompanyLogoResponse(BaseModel):

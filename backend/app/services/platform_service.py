@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -368,7 +369,9 @@ class PlatformService:
                 resource_type=resource_type,
                 resource_id=resource_id,
                 description=description,
-                event_metadata=metadata or {},
+                # Callers pass raw payload dumps that may hold UUID/Decimal/datetime values,
+                # which the JSONB column cannot serialize on its own.
+                event_metadata=jsonable_encoder(metadata or {}),
                 ip_address=ip_address,
                 user_agent=user_agent,
             )

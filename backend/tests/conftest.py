@@ -88,7 +88,7 @@ def clean_database(test_session_factory) -> Generator[None, None, None]:
             sa.text(
                 "TRUNCATE TABLE "
                 "inventory_transactions, product_images, product_tag_links, product_tags, product_categories, "
-                "ai_recognitions, company_invitations, order_items, orders, products, users, companies, "
+                "ai_learning, ai_recognitions, company_invitations, order_items, orders, products, users, companies, "
                 "audit_logs, notifications, company_usages, company_subscriptions "
                 "RESTART IDENTITY CASCADE"
             )
@@ -100,7 +100,7 @@ def clean_database(test_session_factory) -> Generator[None, None, None]:
             sa.text(
                 "TRUNCATE TABLE "
                 "inventory_transactions, product_images, product_tag_links, product_tags, product_categories, "
-                "ai_recognitions, company_invitations, order_items, orders, products, users, companies, "
+                "ai_learning, ai_recognitions, company_invitations, order_items, orders, products, users, companies, "
                 "audit_logs, notifications, company_usages, company_subscriptions "
                 "RESTART IDENTITY CASCADE"
             )

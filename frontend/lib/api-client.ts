@@ -1,4 +1,5 @@
-import { AUTH_STORAGE_KEYS, isBrowser } from "@/lib/auth";
+import { getStoredAccessToken, isBrowser, setStoredAuth } from "@/lib/auth";
+import { isNetworkFailure, networkFailureMessage } from "@/lib/network-error";
 
 export class ApiError extends Error {
   constructor(
@@ -20,7 +21,7 @@ export function resolveUrl(url: string): string {
     return url;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
   if (!baseUrl) {
     return url;
   }
@@ -29,7 +30,7 @@ export function resolveUrl(url: string): string {
   return new URL(normalizedPath, baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`).toString();
 }
 
-function buildHeaders(init: RequestInitWithJson = {}): Headers {
+export function buildHeaders(init: RequestInitWithJson = {}): Headers {
   const headers = new Headers(init.headers);
 
   if (init.body !== undefined && !(init.body instanceof FormData)) {
@@ -37,7 +38,7 @@ function buildHeaders(init: RequestInitWithJson = {}): Headers {
   }
 
   if (isBrowser()) {
-    const accessToken = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+    const accessToken = getStoredAccessToken();
     if (accessToken && !headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${accessToken}`);
     }
@@ -46,19 +47,99 @@ function buildHeaders(init: RequestInitWithJson = {}): Headers {
   return headers;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessTokenFromCookie(): Promise<boolean> {
+  if (!isBrowser()) {
+    return false;
+  }
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = (async () => {
+    let response: Response;
+    try {
+      response = await fetch(resolveUrl("/auth/refresh"), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+        cache: "no-store",
+      });
+    } catch (error) {
+      if (isNetworkFailure(error)) {
+        return false;
+      }
+      throw error;
+    }
+    if (!response.ok) {
+      return false;
+    }
+    const payload = (await response.json()) as { access_token: string; expires_in: number };
+    setStoredAuth(payload.access_token, payload.expires_in);
+    return true;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+async function ensureAccessToken(url: string): Promise<void> {
+  if (!isBrowser() || getStoredAccessToken()) {
+    return;
+  }
+  if (url.includes("/auth/login") || url.includes("/auth/register") || url.includes("/auth/refresh")) {
+    return;
+  }
+  await refreshAccessTokenFromCookie();
+}
+
+async function performFetch(url: string, init: RequestInitWithJson, headers: Headers): Promise<Response> {
+  try {
+    return await fetch(resolveUrl(url), {
+      ...init,
+      headers,
+      credentials: "include",
+      body:
+        init.body === undefined || init.body instanceof FormData
+          ? init.body
+          : JSON.stringify(init.body),
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (isNetworkFailure(error)) {
+      throw new ApiError(networkFailureMessage(), 0, { cause: String(error) });
+    }
+    throw error;
+  }
+}
+
 export async function apiClient<T>(url: string, init: RequestInitWithJson = {}): Promise<T> {
+  await ensureAccessToken(url);
   const headers = buildHeaders(init);
 
-  const response = await fetch(resolveUrl(url), {
-    ...init,
-    headers,
-    credentials: "include",
-    body:
-      init.body === undefined || init.body instanceof FormData
-        ? init.body
-        : JSON.stringify(init.body),
-    cache: "no-store",
-  });
+  const response = await performFetch(url, init, headers);
+
+  if (response.status === 401 && !url.includes("/auth/")) {
+    const refreshed = await refreshAccessTokenFromCookie();
+    if (refreshed) {
+      const retryHeaders = buildHeaders(init);
+      const retryResponse = await performFetch(url, init, retryHeaders);
+      if (retryResponse.ok) {
+        return (await retryResponse.json()) as T;
+      }
+      const retryDetails = await retryResponse.json().catch(() => undefined);
+      throw new ApiError(
+        (retryDetails as { detail?: string } | undefined)?.detail ?? "Request failed",
+        retryResponse.status,
+        retryDetails,
+      );
+    }
+  }
 
   if (!response.ok) {
     const details = await response.json().catch(() => undefined);

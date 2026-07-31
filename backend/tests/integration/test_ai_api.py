@@ -28,11 +28,11 @@ def _auth_headers(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
-def test_ai_text_recognition_and_order_confirmation(client, db_session, monkeypatch) -> None:
+def test_ai_draft_order_from_recognition(client, db_session, monkeypatch) -> None:
     owner = _register_owner(
         client,
-        company_name=f"AI Orders {uuid4().hex[:8]}",
-        email=f"owner-{uuid4().hex[:8]}@ai-orders.example.com",
+        company_name=f"AI Draft {uuid4().hex[:8]}",
+        email=f"owner-{uuid4().hex[:8]}@ai-draft.example.com",
     )
     token = owner["access_token"]
 
@@ -44,8 +44,8 @@ def test_ai_text_recognition_and_order_confirmation(client, db_session, monkeypa
         "/api/v1/products",
         headers=_auth_headers(token),
         json={
-            "name": "Valve 1/2",
-            "aliases": ["Valve Half Inch"],
+            "name": "Valve Half Inch",
+            "aliases": ["Valve 1/2"],
             "sku": "VAL-050",
             "unit": "pcs",
             "price": "4900.00",
@@ -68,7 +68,77 @@ def test_ai_text_recognition_and_order_confirmation(client, db_session, monkeypa
     recognition_response = client.post(
         "/api/v1/ai/order-recognitions/text",
         headers=_auth_headers(token),
-        json={"text": "Valve Half Inch 2"},
+        json={"text": "Valve Half Inch 2 шт"},
+    )
+    assert recognition_response.status_code == 201, recognition_response.text
+    recognition_id = recognition_response.json()["id"]
+
+    draft_response = client.post(
+        f"/api/v1/ai/order-recognitions/{recognition_id}/draft-order",
+        headers=_auth_headers(token),
+    )
+    assert draft_response.status_code == 201, draft_response.text
+    draft_order = draft_response.json()["order"]
+    assert draft_order["status"] == "draft"
+    assert draft_order["items"][0]["product_id"] == product_id
+
+    confirm_response = client.post(
+        f"/api/v1/ai/order-recognitions/{recognition_id}/confirm",
+        headers=_auth_headers(token),
+        json={
+            "customer_name": "Khan Market",
+            "items": [{"product_id": product_id, "quantity": "2", "discount_amount": "0"}],
+            "status": "new",
+        },
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+    confirm_data = confirm_response.json()
+    assert confirm_data["order"]["id"] == draft_order["id"]
+    assert confirm_data["order"]["status"] == "new"
+    assert confirm_data["recognition"]["status"] == "converted"
+
+
+def test_ai_text_recognition_and_order_confirmation(client, db_session, monkeypatch) -> None:
+    owner = _register_owner(
+        client,
+        company_name=f"AI Orders {uuid4().hex[:8]}",
+        email=f"owner-{uuid4().hex[:8]}@ai-orders.example.com",
+    )
+    token = owner["access_token"]
+
+    company = db_session.query(Company).filter(Company.id == owner["company"]["id"]).one()
+    company.tax_percentage = Decimal("12.00")
+    db_session.commit()
+
+    product_response = client.post(
+        "/api/v1/products",
+        headers=_auth_headers(token),
+        json={
+            "name": "Valve Half Inch",
+            "aliases": ["Valve 1/2"],
+            "sku": "VAL-050",
+            "unit": "pcs",
+            "price": "4900.00",
+        },
+    )
+    assert product_response.status_code == 201, product_response.text
+    product_id = product_response.json()["id"]
+
+    class FakeProvider:
+        def extract_from_text(self, *args, **kwargs):
+            return AIProviderResult(
+                text='{"items":[{"product_name":"Valve Half Inch","quantity":2,"unit":"pcs","confidence":0.98}]}',
+                raw_response={"id": "resp_1"},
+                model="gpt-test",
+                usage=AIUsage(input_tokens=11, output_tokens=20, total_tokens=31),
+            )
+
+    monkeypatch.setattr(AIService, "_provider", lambda self: FakeProvider())
+
+    recognition_response = client.post(
+        "/api/v1/ai/order-recognitions/text",
+        headers=_auth_headers(token),
+        json={"text": "Valve Half Inch 2 шт"},
     )
     assert recognition_response.status_code == 201, recognition_response.text
     recognition = recognition_response.json()
@@ -196,9 +266,9 @@ def test_ai_pdf_recognition_uses_storage(client, monkeypatch) -> None:
     token = owner["access_token"]
 
     class FakeProvider:
-        def extract_from_file(self, *args, **kwargs):
+        def ocr_text_from_file(self, *args, **kwargs):
             return AIProviderResult(
-                text='{"items":[{"product_name":"Cable 10m","quantity":3,"unit":"pcs","confidence":0.95}]}',
+                text="Cable 10m 3 шт",
                 raw_response={"id": "resp_pdf"},
                 model="gpt-test",
                 usage=AIUsage(input_tokens=14, output_tokens=18, total_tokens=32),
@@ -215,3 +285,39 @@ def test_ai_pdf_recognition_uses_storage(client, monkeypatch) -> None:
     payload = response.json()
     assert payload["input_type"] == "pdf"
     assert payload["original_file_path"].startswith(str(owner["company"]["id"]))
+
+
+def test_ai_photo_recognition_without_storage(client, monkeypatch) -> None:
+    from app.dependencies.storage import get_optional_storage_service
+    from app.main import app
+
+    app.dependency_overrides[get_optional_storage_service] = lambda: None
+
+    owner = _register_owner(
+        client,
+        company_name=f"AI Photos {uuid4().hex[:8]}",
+        email=f"owner-{uuid4().hex[:8]}@ai-photos.example.com",
+    )
+    token = owner["access_token"]
+
+    class FakeProvider:
+        def ocr_text_from_image(self, *args, **kwargs):
+            return AIProviderResult(
+                text="Pipe 20 5 шт",
+                raw_response={"id": "resp_photo"},
+                model="gpt-test",
+                usage=AIUsage(input_tokens=10, output_tokens=15, total_tokens=25),
+            )
+
+    monkeypatch.setattr(AIService, "_provider", lambda self: FakeProvider())
+
+    response = client.post(
+        "/api/v1/ai/order-recognitions/photo",
+        headers=_auth_headers(token),
+        files={"file": ("order.jpg", b"\xff\xd8\xff\xd8fakejpeg", "image/jpeg")},
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()
+    assert payload["input_type"] == "photo"
+    assert payload["original_file_path"] is None
+    assert payload["items"][0]["recognized_name"] == "Pipe 20 5 шт"

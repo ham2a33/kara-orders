@@ -30,6 +30,7 @@ class OrderItemWrite(BaseModel):
     product_id: UUID
     quantity: Decimal = Field(gt=0)
     discount_amount: Decimal | None = Field(default=Decimal("0"), ge=0)
+    unit_price: Decimal | None = Field(default=None, ge=0)
 
 
 class OrderCreateRequest(BaseModel):
@@ -92,4 +93,23 @@ class InvoicePdfResponse(BaseModel):
 class InvoicePreviewResponse(BaseModel):
     order: OrderRead
     company_name: str
+    company: "InvoiceCompanyPreview"
     pdf_url: str | None = None
+
+
+class InvoiceCompanyPreview(BaseModel):
+    name: str
+    bin_tax_id: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    address: str | None = None
+    instagram: str | None = None
+    director_name: str | None = None
+    welcome_message: str | None = None
+    receipt_signature: str | None = None
+    footer_text: str | None = None
+    invoice_logo_url: str | None = None
+    tax_percentage: Decimal
+    currency: str
+    timezone: str = "Asia/Almaty"

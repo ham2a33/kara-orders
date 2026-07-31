@@ -3,12 +3,14 @@ from __future__ import annotations
 import base64
 import json
 import mimetypes
+import traceback
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, request
 
 from app.core.config import Settings
 from app.core.exceptions import ConfigurationError, UpstreamServiceError
+from app.services.ai.recognition_logger import log_recognition_stage
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,14 @@ class AIProviderResult:
     raw_response: dict[str, Any]
     model: str
     usage: AIUsage
+
+
+_OCR_INSTRUCTION = (
+    "You are an OCR engine for handwritten and printed order lists. "
+    "Return ONLY the raw text visible in the image or PDF. "
+    "Preserve line breaks: one order line per line. "
+    "Do not return JSON, markdown, commentary, or product interpretations."
+)
 
 
 class OpenAIProvider:
@@ -55,7 +65,7 @@ class OpenAIProvider:
             ],
             "text": self._json_schema_text_config(schema),
         }
-        payload = self._post_json("/responses", body)
+        payload = self._post_json("/responses", body, operation="extract_from_text")
         return self._build_result(payload, self.settings.openai_recognition_model)
 
     def extract_from_image(
@@ -90,7 +100,7 @@ class OpenAIProvider:
             ],
             "text": self._json_schema_text_config(schema),
         }
-        payload = self._post_json("/responses", body)
+        payload = self._post_json("/responses", body, operation="extract_from_image", filename=filename)
         return self._build_result(payload, self.settings.openai_recognition_model)
 
     def extract_from_file(
@@ -128,7 +138,78 @@ class OpenAIProvider:
             ],
             "text": self._json_schema_text_config(schema),
         }
-        payload = self._post_json("/responses", body)
+        payload = self._post_json("/responses", body, operation="extract_from_file", filename=filename)
+        return self._build_result(payload, self.settings.openai_recognition_model)
+
+    def ocr_text_from_image(
+        self,
+        *,
+        file_bytes: bytes,
+        mime_type: str,
+        filename: str,
+    ) -> AIProviderResult:
+        encoded = base64.b64encode(file_bytes).decode("utf-8")
+        body = {
+            "model": self.settings.openai_recognition_model,
+            "input": [
+                {
+                    "role": "developer",
+                    "content": [{"type": "input_text", "text": _OCR_INSTRUCTION}],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "Extract every order line exactly as written. One product per line.",
+                        },
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:{mime_type or 'image/jpeg'};base64,{encoded}",
+                            "detail": "high",
+                        },
+                    ],
+                },
+            ],
+        }
+        payload = self._post_json("/responses", body, operation="ocr_text_from_image", filename=filename)
+        return self._build_result(payload, self.settings.openai_recognition_model)
+
+    def ocr_text_from_file(
+        self,
+        *,
+        file_bytes: bytes,
+        filename: str,
+    ) -> AIProviderResult:
+        encoded = base64.b64encode(file_bytes).decode("utf-8")
+        mime_type = self._guess_mime_type(filename)
+        file_input: dict[str, Any] = {
+            "type": "input_file",
+            "file_data": f"data:{mime_type};base64,{encoded}",
+            "filename": filename,
+        }
+        if mime_type == "application/pdf":
+            file_input["detail"] = "high"
+        body = {
+            "model": self.settings.openai_recognition_model,
+            "input": [
+                {
+                    "role": "developer",
+                    "content": [{"type": "input_text", "text": _OCR_INSTRUCTION}],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "Extract every order line exactly as written. One product per line.",
+                        },
+                        file_input,
+                    ],
+                },
+            ],
+        }
+        payload = self._post_json("/responses", body, operation="ocr_text_from_file", filename=filename)
         return self._build_result(payload, self.settings.openai_recognition_model)
 
     def transcribe_audio(self, *, file_bytes: bytes, filename: str, mime_type: str | None = None) -> AIProviderResult:
@@ -139,7 +220,7 @@ class OpenAIProvider:
             fields={"model": self.settings.openai_transcription_model},
             files=[("file", filename, mime_type or self._guess_mime_type(filename), file_bytes)],
         )
-        payload = self._post_bytes("/audio/transcriptions", form_data, content_type)
+        payload = self._post_bytes("/audio/transcriptions", form_data, content_type, operation="transcribe_audio")
         text = str(payload.get("text") or "").strip()
         if not text:
             raise UpstreamServiceError("OpenAI transcription returned no text")
@@ -150,16 +231,24 @@ class OpenAIProvider:
             usage=self._parse_usage(payload.get("usage")),
         )
 
-    def _post_json(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    def _post_json(self, path: str, body: dict[str, Any], **log_context: Any) -> dict[str, Any]:
         data = json.dumps(body).encode("utf-8")
-        payload = self._post_bytes(path, data, "application/json")
+        payload = self._post_bytes(path, data, "application/json", **log_context)
         if not isinstance(payload, dict):
             raise UpstreamServiceError("OpenAI returned an invalid response")
         return payload
 
-    def _post_bytes(self, path: str, body: bytes, content_type: str) -> dict[str, Any]:
+    def _post_bytes(self, path: str, body: bytes, content_type: str, **log_context: Any) -> dict[str, Any]:
+        url = f"{self.base_url}{path}"
+        log_recognition_stage(
+            "OPENAI_REQUEST",
+            path=path,
+            content_type=content_type,
+            payload_bytes=len(body),
+            **log_context,
+        )
         req = request.Request(
-            f"{self.base_url}{path}",
+            url,
             data=body,
             method="POST",
             headers={
@@ -170,15 +259,50 @@ class OpenAIProvider:
         try:
             with request.urlopen(req, timeout=self.settings.ai_request_timeout_seconds) as response:
                 raw = response.read()
+                log_recognition_stage(
+                    "OPENAI_RESPONSE",
+                    path=path,
+                    http_status=response.status,
+                    response_bytes=len(raw),
+                    **log_context,
+                )
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")
+            log_recognition_stage(
+                "OPENAI_ERROR",
+                path=path,
+                http_status=exc.code,
+                response_body=detail,
+                location="OpenAIProvider._post_bytes",
+                stack_trace=traceback.format_exc(),
+                **log_context,
+                exc=exc,
+            )
             raise UpstreamServiceError(self._extract_error_message(detail)) from exc
         except error.URLError as exc:
+            log_recognition_stage(
+                "OPENAI_ERROR",
+                path=path,
+                location="OpenAIProvider._post_bytes",
+                reason=str(exc.reason),
+                stack_trace=traceback.format_exc(),
+                **log_context,
+                exc=exc,
+            )
             raise UpstreamServiceError(f"OpenAI request failed: {exc.reason}") from exc
 
         try:
             return json.loads(raw.decode("utf-8"))
         except json.JSONDecodeError as exc:
+            log_recognition_stage(
+                "OPENAI_ERROR",
+                path=path,
+                location="OpenAIProvider._post_bytes",
+                response_preview=raw[:500].decode("utf-8", errors="ignore"),
+                stack_trace=traceback.format_exc(),
+                **log_context,
+                exc=exc,
+            )
             raise UpstreamServiceError("OpenAI returned invalid JSON") from exc
 
     def _build_result(self, payload: dict[str, Any], model: str) -> AIProviderResult:
@@ -260,6 +384,8 @@ class OpenAIProvider:
         return b"\r\n".join(lines)
 
     def _guess_mime_type(self, filename: str) -> str:
+        if filename.lower().endswith(".pdf"):
+            return "application/pdf"
         return mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     def _extract_error_message(self, raw: str) -> str:

@@ -5,12 +5,12 @@ import { useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 
+import { ReceiptPreview } from "@/components/orders/receipt-preview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiDownload } from "@/lib/api-client";
 import { getInvoicePreview } from "@/lib/orders";
-import { formatMoney } from "@/components/platform/shared";
 import { extractErrorMessage } from "@/lib/errors";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-statuses";
 
@@ -27,7 +27,7 @@ export default function OrderInvoicePage(): ReactElement {
   const downloadPdf = async (): Promise<void> => {
     setIsDownloading(true);
     try {
-      await apiDownload(`/orders/${orderId}/invoice/pdf`, `invoice-${orderId}.pdf`);
+      await apiDownload(`/orders/${orderId}/invoice/pdf`, `receipt-${orderId}.pdf`);
     } finally {
       setIsDownloading(false);
     }
@@ -35,16 +35,17 @@ export default function OrderInvoicePage(): ReactElement {
 
   const preview = query.data;
   const order = preview?.order;
+  const company = preview?.company;
 
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-6 print:space-y-0">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between print:hidden">
         <div className="space-y-3">
-          <Badge>Предпросмотр счёта</Badge>
+          <Badge>Товарный чек</Badge>
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight">PDF счёта</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Печать чека</h1>
             <p className="max-w-2xl text-muted-foreground">
-              Посмотрите профессиональный счёт для заказа {orderId}, а затем скачайте или распечатайте его напрямую.
+              Предпросмотр товарного чека для заказа {orderId}. PDF совпадает с макетом ниже.
             </p>
           </div>
         </div>
@@ -52,95 +53,52 @@ export default function OrderInvoicePage(): ReactElement {
           <Button type="button" variant="outline" onClick={downloadPdf} disabled={isDownloading}>
             {isDownloading ? "Скачиваем..." : "Скачать PDF"}
           </Button>
-          <Button type="button" onClick={downloadPdf} disabled={isDownloading}>
-            {isDownloading ? "Генерируем..." : "Печать / пересоздание"}
+          <Button type="button" onClick={() => window.print()} disabled={!order || !company}>
+            Печать
           </Button>
         </div>
       </section>
 
       {query.isError ? (
-        <Card className="border-destructive/30">
+        <Card className="border-destructive/30 print:hidden">
           <CardContent className="p-5 text-sm text-destructive">{extractErrorMessage(query.error)}</CardContent>
         </Card>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="min-h-[720px]">
-          <CardHeader>
-            <CardTitle>Полотно счёта</CardTitle>
-            <CardDescription>Стилизовано так же, как production PDF-вывод.</CardDescription>
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] print:block">
+        <Card className="min-h-[720px] print:min-h-0 print:border-0 print:shadow-none">
+          <CardHeader className="print:hidden">
+            <CardTitle>Макет чека</CardTitle>
+            <CardDescription>Узкая вёрстка для 58/80 мм и печати на A4.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="rounded-3xl border bg-muted/20 p-6">
-              <div className="mb-6 flex items-start justify-between gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground">{preview?.company_name ?? "Компания"}</p>
-                  <h2 className="text-2xl font-semibold tracking-tight">{order?.invoice_number ?? `Order ${orderId}`}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Дата: {order ? new Date(order.created_at).toLocaleDateString("ru-RU") : "—"}
-                  </p>
-                </div>
-                <Badge variant={order ? orderStatusBadgeVariant(order.status) : "success"}>
-                  {order ? orderStatusLabel(order.status) : "Готово"}
-                </Badge>
-              </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium">Информация о компании</p>
-                  <p className="text-sm text-muted-foreground">{preview?.company_name ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Информация о клиенте</p>
-                  <p className="text-sm text-muted-foreground">{order?.customer_name ?? "—"}</p>
-                  <p className="text-sm text-muted-foreground">{order?.customer_phone ?? "—"}</p>
-                  <p className="text-sm text-muted-foreground">{order?.customer_address ?? "—"}</p>
-                </div>
-              </div>
-              <div className="mt-6 overflow-hidden rounded-2xl border bg-background">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b bg-muted/30 text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">Товар</th>
-                      <th className="px-4 py-3 font-medium">Кол-во</th>
-                      <th className="px-4 py-3 font-medium">Итого</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(order?.items ?? []).map((item) => (
-                      <tr key={item.id} className="border-b last:border-0">
-                        <td className="px-4 py-3">{item.product_name}</td>
-                        <td className="px-4 py-3">{item.quantity}</td>
-                        <td className="px-4 py-3">{formatMoney(item.line_total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="rounded-3xl border bg-background p-6 text-sm text-muted-foreground">
-              Backend-генератор PDF создаёт финальный счёт с итогами, футером и платёжной информацией.
+          <CardContent className="flex justify-center print:p-0">
+            <div className="w-full max-w-[80mm] rounded-3xl border bg-white p-6 shadow-sm print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none">
+              {order && company ? (
+                <ReceiptPreview order={order} company={company} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Загружаем чек...</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="print:hidden">
           <CardHeader>
-            <CardTitle>Действия со счётом</CardTitle>
-            <CardDescription>Скачайте, распечатайте или заново сгенерируйте счёт.</CardDescription>
+            <CardTitle>Действия</CardTitle>
+            <CardDescription>Статус заказа и быстрые ссылки.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-2xl border bg-muted/30 p-4">
-              <p className="text-sm font-medium">Скачивание PDF</p>
-              <p className="text-sm text-muted-foreground">Использует backend endpoint `/invoice/pdf` с auth-заголовками.</p>
+              <p className="text-sm font-medium">Статус заказа</p>
+              <div className="mt-2">
+                <Badge variant={order ? orderStatusBadgeVariant(order.status) : "outline"}>
+                  {order ? orderStatusLabel(order.status) : "—"}
+                </Badge>
+              </div>
             </div>
             <div className="rounded-2xl border bg-muted/30 p-4">
-              <p className="text-sm font-medium">Печать</p>
-              <p className="text-sm text-muted-foreground">Печать в браузере использует тот же PDF-вывод.</p>
-            </div>
-            <div className="rounded-2xl border bg-muted/30 p-4">
-              <p className="text-sm font-medium">Пересоздание</p>
-              <p className="text-sm text-muted-foreground">Счёт пересоздаётся из текущих данных заказа по запросу.</p>
+              <p className="text-sm font-medium">PDF</p>
+              <p className="text-sm text-muted-foreground">Генерируется на backend тем же шаблоном, что и предпросмотр.</p>
             </div>
             <Button asChild variant="outline" className="w-full">
               <Link href={`/orders/${orderId}`}>Назад к заказу</Link>

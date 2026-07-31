@@ -45,7 +45,7 @@ from app.schemas.product import (
     ProductUpdateRequest,
 )
 from app.services.platform_service import PlatformService
-from app.services.product_size_parser import extract_size_from_name
+from app.services.product_size_parser import extract_size_from_name, normalize_product_name_and_size
 from app.services.storage_service import StorageService, build_storage_object_name
 
 
@@ -148,12 +148,14 @@ class ProductService:
         sku = payload.sku or self._generate_sku(company_id)
         self._validate_unique_product_fields(company_id, sku=sku, barcode=payload.barcode)
         category = self._resolve_category(company_id, payload.category_id, payload.category)
+        product_name, product_size = normalize_product_name_and_size(payload.name, payload.size)
 
         product = Product(
             company_id=company_id,
             category_id=category.id if category else None,
             category=category.name if category else payload.category,
-            name=payload.name,
+            name=product_name,
+            size=product_size,
             description=payload.description,
             manufacturer=payload.manufacturer,
             sku=sku,
@@ -326,6 +328,16 @@ class ProductService:
         )
 
         updates = payload.model_dump(exclude_unset=True)
+        if "name" in updates or "size" in updates:
+            product_name, product_size = normalize_product_name_and_size(
+                updates.get("name", product.name),
+                updates.get("size", product.size),
+            )
+            product.name = product_name
+            product.size = product_size
+            updates.pop("name", None)
+            updates.pop("size", None)
+
         for field, value in updates.items():
             if field in {"category_id", "category", "tag_ids"}:
                 continue
@@ -723,13 +735,14 @@ class ProductService:
         stock_value = stock_qty * cost
         low_stock = bool(product.low_stock_threshold is not None and stock_qty <= product.low_stock_threshold)
         extracted_size, _ = extract_size_from_name(product.name)
+        stored_size = (product.size or "").strip() or None
         return ProductRead(
             id=product.id,
             company_id=product.company_id,
             category_id=product.category_id,
             name=product.name,
             description=product.description,
-            size=extracted_size,
+            size=stored_size or extracted_size,
             manufacturer=product.manufacturer,
             sku=product.sku,
             barcode=product.barcode,

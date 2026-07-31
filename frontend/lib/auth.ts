@@ -33,7 +33,18 @@ export function getStoredAccessToken(): string | null {
     return null;
   }
 
-  return window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+  const fromStorage = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+  if (fromStorage) {
+    return fromStorage;
+  }
+
+  const cookiePrefix = `${encodeURIComponent(AUTH_COOKIE_NAMES.accessToken)}=`;
+  const cookieEntry = document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(cookiePrefix));
+  if (!cookieEntry) {
+    return null;
+  }
+
+  return decodeURIComponent(cookieEntry.slice(cookiePrefix.length));
 }
 
 export function hasStoredAccessCookie(): boolean {

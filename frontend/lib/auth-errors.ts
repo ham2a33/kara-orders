@@ -1,4 +1,5 @@
-import type { ApiError } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
+import { extractErrorMessage } from "@/lib/errors";
 
 type ValidationIssue = {
   loc?: Array<string | number>;
@@ -6,11 +7,15 @@ type ValidationIssue = {
 };
 
 export function extractAuthErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
+  if (error instanceof ApiError && error.status === 401) {
+    const detail = extractErrorMessage(error);
+    if (detail && detail !== "Request failed") {
+      return detail;
+    }
+    return "Неверный email или пароль";
   }
 
-  return "Request failed";
+  return extractErrorMessage(error);
 }
 
 export function mapValidationIssues(error: unknown): Record<string, string> {

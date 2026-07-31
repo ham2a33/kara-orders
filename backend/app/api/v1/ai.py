@@ -11,6 +11,7 @@ from app.db.models.user import User
 from app.schemas.ai import (
     AIRecognitionConfirmRequest,
     AIRecognitionConfirmResponse,
+    AIRecognitionDraftOrderResponse,
     AIRecognitionItemSelectionRequest,
     AIRecognitionListResponse,
     AIRecognitionRead,
@@ -84,6 +85,20 @@ def recognize_pdf(
     service: AIService = Depends(get_ai_service),
 ) -> AIRecognitionRead:
     return service.recognize_pdf(current_user.company_id, current_user, file=file)
+
+
+@router.post("/{recognition_id}/draft-order", response_model=AIRecognitionDraftOrderResponse, status_code=201)
+def create_draft_order_from_recognition(
+    recognition_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: AIService = Depends(get_ai_service),
+) -> AIRecognitionDraftOrderResponse:
+    order = service.create_draft_order_from_recognition(
+        current_user.company_id,
+        recognition_id,
+        current_user,
+    )
+    return AIRecognitionDraftOrderResponse(order=order)
 
 
 @router.post("/{recognition_id}/confirm", response_model=AIRecognitionConfirmResponse)

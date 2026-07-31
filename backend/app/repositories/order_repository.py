@@ -16,7 +16,7 @@ class OrderRepository(CompanyScopedRepository[Order]):
         statement = (
             select(Order)
             .where(Order.id == order_id, Order.company_id == company_id)
-            .options(selectinload(Order.items).selectinload(OrderItem.product))
+            .options(selectinload(Order.company), selectinload(Order.items).selectinload(OrderItem.product))
         )
         return self.session.scalar(statement)
 

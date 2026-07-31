@@ -1,4 +1,4 @@
-export type OrderStatus = "new" | "confirmed" | "deleted";
+export type OrderStatus = "draft" | "new" | "confirmed" | "deleted";
 
 export type OrderItem = {
   id: string;
@@ -52,13 +52,33 @@ export type OrderCreatePayload = {
     product_id: string;
     quantity: string | number;
     discount_amount?: string | number | null;
+    unit_price?: string | number | null;
   }>;
 };
 
 export type OrderUpdatePayload = Partial<OrderCreatePayload>;
 
+export type InvoiceCompanyPreview = {
+  name: string;
+  bin_tax_id: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  instagram: string | null;
+  director_name: string | null;
+  welcome_message: string | null;
+  receipt_signature: string | null;
+  footer_text: string | null;
+  invoice_logo_url: string | null;
+  tax_percentage: string;
+  currency: string;
+  timezone: string;
+};
+
 export type InvoicePreview = {
   order: Order;
   company_name: string;
+  company: InvoiceCompanyPreview;
   pdf_url: string | null;
 };

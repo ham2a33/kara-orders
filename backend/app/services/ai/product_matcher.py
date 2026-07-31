@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-import re
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,56 +11,47 @@ from sqlalchemy.orm import Session, selectinload
 from app.db.models.product import Product
 from app.schemas.ai import AICandidateProductRead, AIExtractionItem, AIItemStatus, AIRecognitionItemRead
 from app.schemas.product import ProductRead
+from app.services.ai.catalog_match import (
+    build_catalog_search_key,
+    build_match_diagnostics,
+    rank_catalog_matches,
+)
+from app.services.ai.handwritten_line_parser import normalize_order_unit
+from app.services.ai.learning_service import AILearningService
+from app.services.ai.ocr_text_normalize import apply_product_synonyms, build_ai_learning_key
+from app.services.ai.recognition_logger import log_recognition_stage
+from app.services.size_equivalence import sanitize_parsed_line_size
 
 
 @dataclass(frozen=True)
 class MatchedAIItem:
     recognized_name: str
+    product_name: str
+    size: str | None
+    catalog_search_key: str
     quantity: Decimal
-    unit: str | None
+    unit: str
     confidence: Decimal
     status: AIItemStatus
     match_method: str | None
     needs_review: bool
     selected_product: Product | None
     candidate_products: list[Product]
+    source_line: str | None = None
+    match_diagnostics: dict[str, Any] | None = None
 
 
 class ProductMatcher:
     def __init__(self, session: Session, *, low_confidence_threshold: Decimal | float) -> None:
         self.session = session
         self.low_confidence_threshold = Decimal(str(low_confidence_threshold))
+        self.learning = AILearningService(session)
 
     def match_items(self, company_id: UUID, items: list[AIExtractionItem]) -> list[MatchedAIItem]:
         products = self._fetch_products(company_id)
         matched_items: list[MatchedAIItem] = []
         for item in items:
-            candidate_products, match_method = self._find_candidates(products, item.product_name)
-            selected_product = candidate_products[0] if len(candidate_products) == 1 else None
-            status: AIItemStatus
-            needs_review: bool
-            if selected_product is not None:
-                status = "matched"
-                needs_review = False
-            elif not candidate_products:
-                status = "unmatched"
-                needs_review = True
-            else:
-                status = "needs_review"
-                needs_review = True
-            matched_items.append(
-                MatchedAIItem(
-                    recognized_name=item.product_name,
-                    quantity=item.quantity,
-                    unit=item.unit,
-                    confidence=item.confidence,
-                    status=status,
-                    match_method=match_method,
-                    needs_review=needs_review,
-                    selected_product=selected_product,
-                    candidate_products=candidate_products,
-                )
-            )
+            matched_items.append(self._match_single_item(company_id, products, item))
         return matched_items
 
     def resolve_item(self, company_id: UUID, payload: dict[str, object]) -> AIRecognitionItemRead:
@@ -68,7 +59,7 @@ class ProductMatcher:
 
     def resolve_payload_items(self, company_id: UUID, payload_items: list[dict[str, object]]) -> list[AIRecognitionItemRead]:
         products = self._fetch_products(company_id)
-        return [self._resolve_item_from_products(products, payload) for payload in payload_items if isinstance(payload, dict)]
+        return [self._resolve_item_from_products(company_id, products, payload) for payload in payload_items if isinstance(payload, dict)]
 
     def to_read_item(
         self,
@@ -88,7 +79,9 @@ class ProductMatcher:
             selected_product = item.candidate_products[0]
         return AIRecognitionItemRead(
             recognized_name=item.recognized_name,
-            product_name=item.recognized_name,
+            product_name=item.product_name,
+            size=item.size,
+            catalog_search_key=item.catalog_search_key,
             quantity=item.quantity,
             unit=item.unit,
             confidence=item.confidence,
@@ -98,6 +91,7 @@ class ProductMatcher:
             match_method=item.match_method,
             needs_review=item.needs_review,
             matched_product=ProductRead.model_validate(selected_product) if selected_product is not None else None,
+            match_diagnostics=item.match_diagnostics,
         )
 
     def _fetch_products(self, company_id: UUID) -> list[Product]:
@@ -109,72 +103,159 @@ class ProductMatcher:
             ).all()
         )
 
-    def _find_candidates(self, products: list[Product], product_name: str) -> tuple[list[Product], str | None]:
-        normalized_name = self._normalize(product_name)
-        if not normalized_name:
-            return [], None
-        raw_name = product_name.strip().casefold()
-        scored_matches: dict[UUID, tuple[int, Product, str]] = {}
-
-        for product in products:
-            score, reason = self._score_product(product, normalized_name, raw_name)
-            if score <= 0:
-                continue
-            existing = scored_matches.get(product.id)
-            if existing is None or score > existing[0]:
-                scored_matches[product.id] = (score, product, reason or "match")
-
-        if not scored_matches:
-            return [], None
-
-        ordered_matches = sorted(
-            scored_matches.values(),
-            key=lambda item: (-item[0], item[1].name.casefold(), str(item[1].id)),
-        )
-        return [match[1] for match in ordered_matches], ordered_matches[0][2]
-
-    def _score_product(self, product: Product, normalized_name: str, raw_name: str) -> tuple[int, str | None]:
-        normalized_product_name = self._normalize(product.name)
-        raw_product_name = product.name.strip().casefold()
-        normalized_sku = self._normalize(product.sku) if product.sku else None
-        normalized_barcode = self._normalize(product.barcode) if product.barcode else None
-        normalized_manufacturer = self._normalize(product.manufacturer) if product.manufacturer else None
-
-        exact_checks: list[tuple[bool, int, str]] = [
-            (normalized_product_name == normalized_name, 100, "normalized_name"),
-            (raw_product_name == raw_name, 110, "exact_name"),
-            (normalized_sku == normalized_name, 120, "sku"),
-            (normalized_barcode == normalized_name, 130, "barcode"),
-            (normalized_manufacturer == normalized_name, 115, "manufacturer"),
-        ]
-
-        for alias in product.aliases or []:
-            normalized_alias = self._normalize(alias)
-            exact_checks.extend(
-                [
-                    (normalized_alias == normalized_name, 105, "alias"),
-                    (alias.strip().casefold() == raw_name, 125, "alias_exact"),
-                    (bool(normalized_alias and normalized_name and normalized_alias in normalized_name), 95, "alias_contains"),
-                    (bool(normalized_alias and normalized_name and normalized_name in normalized_alias), 90, "alias_contains"),
-                ]
+    def _get_company_product(self, company_id: UUID, product_id: UUID) -> Product | None:
+        return self.session.scalar(
+            select(Product)
+            .where(
+                Product.id == product_id,
+                Product.company_id == company_id,
+                Product.deleted_at.is_(None),
             )
+            .options(selectinload(Product.images))
+        )
 
-        for matched, score, reason in exact_checks:
-            if matched:
-                return score, reason
+    def _match_single_item(self, company_id: UUID, products: list[Product], item: AIExtractionItem) -> MatchedAIItem:
+        query_name = apply_product_synonyms(item.product_name)
+        query_size = sanitize_parsed_line_size(item.size, item.quantity, normalize_order_unit(item.unit))
+        item = item.model_copy(update={"size": query_size})
+        catalog_key = build_catalog_search_key(query_name, query_size)
+        learning_key = build_ai_learning_key(item.product_name, query_size)
 
-        containment_checks: list[tuple[bool, int, str]] = [
-            (bool(normalized_name and normalized_product_name and normalized_name in normalized_product_name), 85, "name_contains"),
-            (bool(normalized_name and normalized_product_name and normalized_product_name in normalized_name), 80, "name_contains"),
-            (bool(normalized_name and normalized_manufacturer and normalized_name in normalized_manufacturer), 75, "manufacturer_contains"),
-            (bool(normalized_name and normalized_manufacturer and normalized_manufacturer in normalized_name), 70, "manufacturer_contains"),
-            (bool(normalized_name and normalized_sku and normalized_name in normalized_sku), 65, "sku_contains"),
-            (bool(normalized_name and normalized_barcode and normalized_name in normalized_barcode), 60, "barcode_contains"),
-        ]
-        for matched, score, reason in containment_checks:
-            if matched:
-                return score, reason
-        return 0, None
+        learned_product_id = self.learning.lookup_product_id(
+            company_id,
+            product_name=item.product_name,
+            size=query_size,
+        )
+        if learned_product_id is not None:
+            learned_product = next((product for product in products if product.id == learned_product_id), None)
+            if learned_product is None:
+                learned_product = self._get_company_product(company_id, learned_product_id)
+            if learned_product is not None:
+                log_recognition_stage(
+                    "AI_LEARNING_HIT",
+                    company_id=company_id,
+                    learning_key=learning_key,
+                    product_id=str(learned_product.id),
+                    product_name=learned_product.name,
+                )
+                return self._build_matched_item(
+                    item=item,
+                    query_name=query_name,
+                    catalog_key=catalog_key,
+                    products=products,
+                    candidate_products=[learned_product],
+                    selected_product=learned_product,
+                    status="matched",
+                    needs_review=False,
+                    match_method="learned",
+                    match_count=1,
+                )
+
+        scored_matches = rank_catalog_matches(
+            products,
+            query_name=query_name,
+            query_size=query_size,
+        )
+        candidate_products = [match.profile.product for match in scored_matches]
+        diagnostics = build_match_diagnostics(
+            products,
+            query_name=query_name,
+            query_size=query_size,
+            matches=scored_matches,
+        )
+        match_method = "name_then_size" if query_size and scored_matches else ("fuzzy_name" if scored_matches else None)
+
+        selected_product = candidate_products[0] if len(candidate_products) == 1 else None
+        if selected_product is not None:
+            status: AIItemStatus = "matched"
+            needs_review = False
+        elif not candidate_products:
+            status = "not_found"
+            needs_review = True
+        else:
+            status = "needs_review"
+            needs_review = True
+
+        return self._build_matched_item(
+            item=item,
+            query_name=query_name,
+            catalog_key=catalog_key,
+            products=products,
+            candidate_products=candidate_products,
+            selected_product=selected_product,
+            status=status,
+            needs_review=needs_review,
+            match_method=match_method,
+            diagnostics=diagnostics,
+            match_count=diagnostics.catalog_match_count,
+        )
+
+    def _build_matched_item(
+        self,
+        *,
+        item: AIExtractionItem,
+        query_name: str,
+        catalog_key: str,
+        products: list[Product],
+        candidate_products: list[Product],
+        selected_product: Product | None,
+        status: AIItemStatus,
+        needs_review: bool,
+        match_method: str | None,
+        match_count: int,
+        diagnostics: Any | None = None,
+    ) -> MatchedAIItem:
+        if diagnostics is None:
+            diagnostics = build_match_diagnostics(
+                products,
+                query_name=query_name,
+                query_size=item.size,
+                matches=[],
+            )
+        ocr_line = item.source_line or catalog_key
+        diagnostics_payload = {
+            **diagnostics.as_dict(),
+            "ocr_line": ocr_line,
+            "parser_product_name": query_name,
+            "normalized_product_name": query_name,
+            "learning_key": build_ai_learning_key(item.product_name, item.size),
+            "parser_size": item.size,
+            "parser_quantity": str(item.quantity),
+            "parser_unit": normalize_order_unit(item.unit),
+        }
+        log_recognition_stage(
+            "CATALOG_LINE_MATCH",
+            ocr_line=ocr_line,
+            parser_product_name=query_name,
+            parser_size=item.size,
+            parser_quantity=str(item.quantity),
+            parser_unit=item.unit,
+            catalog_match_count=match_count,
+            best_match_name=diagnostics.best_match_name,
+            best_match_score=diagnostics.best_match_score,
+            outcome=diagnostics.outcome if match_count != 1 or selected_product is None else "matched",
+            failure_reason=diagnostics.failure_reason,
+            item_status=status,
+            match_method=match_method,
+        )
+
+        recognized_name = item.source_line or catalog_key
+        return MatchedAIItem(
+            recognized_name=recognized_name,
+            product_name=query_name.strip(),
+            size=item.size,
+            catalog_search_key=catalog_key,
+            quantity=item.quantity,
+            unit=normalize_order_unit(item.unit),
+            confidence=item.confidence,
+            status=status,
+            match_method=match_method,
+            needs_review=needs_review,
+            selected_product=selected_product,
+            candidate_products=candidate_products,
+            source_line=item.source_line,
+            match_diagnostics=diagnostics_payload,
+        )
 
     def _candidate_to_read(self, product: Product) -> AICandidateProductRead:
         primary_image = next((image for image in product.images if image.is_primary), None)
@@ -189,15 +270,37 @@ class ProductMatcher:
             image_url=image.url if image is not None else None,
         )
 
-    def _resolve_item_from_products(self, products: list[Product], payload: dict[str, object]) -> AIRecognitionItemRead:
-        recognized_name = str(payload.get("recognized_name") or payload.get("product_name") or "")
-        candidate_products, match_method = self._find_candidates(products, recognized_name)
+    def _resolve_item_from_products(
+        self,
+        company_id: UUID,
+        products: list[Product],
+        payload: dict[str, object],
+    ) -> AIRecognitionItemRead:
+        product_name = str(payload.get("product_name") or payload.get("recognized_name") or "")
+        size_value = payload.get("size")
+        size = str(size_value).strip() if isinstance(size_value, str) and size_value.strip() else None
+        catalog_key = str(payload.get("catalog_search_key") or build_catalog_search_key(product_name, size))
+        item = AIExtractionItem(
+            product_name=product_name,
+            size=size,
+            quantity=Decimal(str(payload.get("quantity") or "0")),
+            unit=str(payload.get("unit") or "шт"),
+            confidence=Decimal(str(payload.get("confidence") or "0")),
+            source_line=str(payload.get("source_line") or payload.get("recognized_name") or catalog_key),
+        )
+        matched = self._match_single_item(company_id, products, item)
+
         selected_product_id = self._parse_uuid(payload.get("selected_product_id"))
-        selected_product = None
+        selected_product = matched.selected_product
         if selected_product_id is not None:
-            selected_product = next((product for product in candidate_products if product.id == selected_product_id), None)
-        if selected_product is None and len(candidate_products) == 1:
-            selected_product = candidate_products[0]
+            selected_product = next(
+                (product for product in matched.candidate_products if product.id == selected_product_id),
+                None,
+            )
+            if selected_product is None:
+                selected_product = self._get_company_product(company_id, selected_product_id)
+        if selected_product is None and len(matched.candidate_products) == 1:
+            selected_product = matched.candidate_products[0]
             selected_product_id = selected_product.id
         elif selected_product is None:
             selected_product_id = None
@@ -205,31 +308,33 @@ class ProductMatcher:
         if selected_product is not None:
             status: AIItemStatus = "matched"
             needs_review = False
-        elif not candidate_products:
-            status = "unmatched"
+        elif not matched.candidate_products:
+            status = "not_found"
             needs_review = True
         else:
             status = "needs_review"
             needs_review = True
 
+        recognized_name = str(payload.get("recognized_name") or payload.get("source_line") or catalog_key)
+        unit_raw = payload.get("unit")
+        unit = normalize_order_unit(unit_raw if isinstance(unit_raw, str) else None)
+
         return AIRecognitionItemRead(
             recognized_name=recognized_name,
-            product_name=recognized_name,
-            quantity=Decimal(str(payload.get("quantity") or "0")),
-            unit=payload.get("unit") if isinstance(payload.get("unit"), str) else None,
-            confidence=Decimal(str(payload.get("confidence") or "0")),
+            product_name=matched.product_name or None,
+            size=size,
+            catalog_search_key=catalog_key,
+            quantity=item.quantity,
+            unit=unit,
+            confidence=item.confidence,
             status=status,
             selected_product_id=selected_product_id,
-            candidate_products=[self._candidate_to_read(product) for product in candidate_products],
-            match_method=match_method,
+            candidate_products=[self._candidate_to_read(product) for product in matched.candidate_products],
+            match_method=matched.match_method,
             needs_review=needs_review,
             matched_product=ProductRead.model_validate(selected_product) if selected_product is not None else None,
+            match_diagnostics=matched.match_diagnostics,
         )
-
-    def _normalize(self, value: str) -> str:
-        normalized = re.sub(r"[^\w]+", " ", value.casefold(), flags=re.UNICODE).strip()
-        normalized = re.sub(r"_+", " ", normalized)
-        return re.sub(r"\s+", " ", normalized)
 
     def _parse_uuid(self, value: object) -> UUID | None:
         if value is None:

@@ -80,6 +80,10 @@ class Company(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    instagram: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    director_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    welcome_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    receipt_signature: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     users: Mapped[list[User]] = relationship(
         "User",

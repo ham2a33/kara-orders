@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from decimal import Decimal
@@ -75,7 +76,14 @@ def _json_safe(value: object) -> object:
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    logger = logging.getLogger("kara_orders.errors")
+
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+        if exc.status_code >= 500:
+            logger.error(
+                "app_error",
+                extra={"path": str(request.url.path), "status_code": exc.status_code, "detail": exc.message},
+            )
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
     async def validation_error_handler(
@@ -88,6 +96,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_error_handler)
 
     async def generic_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception(
+            "unhandled_exception",
+            extra={"path": str(request.url.path)},
+        )
         return JSONResponse(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"detail": "Internal server error"},

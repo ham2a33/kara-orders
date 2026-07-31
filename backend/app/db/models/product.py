@@ -51,6 +51,7 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Compan
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    size: Mapped[str | None] = mapped_column(String(120), nullable=True)
     description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     manufacturer: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sku: Mapped[str | None] = mapped_column(String(80), nullable=True)

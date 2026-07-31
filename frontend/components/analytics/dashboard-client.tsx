@@ -270,7 +270,7 @@ export function DashboardClient(): ReactElement {
           <Panel title="Последние действия AI" description="История распознаваний за последние записи.">
             <div className="flex flex-col gap-3">
               {aiQuery.data?.items.slice(0, 5).map((recognition) => (
-                <Link key={recognition.id} href={`/ai/review/${recognition.id}`} className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
+                <Link key={recognition.id} href={`/orders/new?recognitionId=${recognition.id}`} className="rounded-2xl border p-4 transition-colors hover:bg-muted/40">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-medium capitalize">{recognition.input_type}</p>

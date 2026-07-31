@@ -89,6 +89,7 @@ export type ProductInventoryTransaction = {
 
 export type ProductCreatePayload = {
   name: string;
+  size?: string | null;
   description?: string | null;
   manufacturer?: string | null;
   sku?: string | null;
